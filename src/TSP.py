@@ -1,5 +1,7 @@
 import math
 
+from direct.directnotify.DirectNotifyGlobal import directNotify
+
 
 class Coord:
     def __init__(self, name, x, y):
@@ -52,18 +54,20 @@ class TSP:
         self._file_name = value
 
     def __str__(self):
-        print("--- TSP Instance ---")
-        print(f"Name: {self.name}")
-        print(f"Dimension: {self.dimension} ({math.factorial(self.dimension)} possible routes)")
+        string_list = ["\n--- TSP Instance ---", f"Name: {self.name}",
+                       f"Dimension: {self.dimension} ({math.factorial(self.dimension)} possible routes)"]
         for coord in self._coords:
-            print(coord)
-        return "--------------------"
+            string_list.append(coord)
+        string_list.append("--------------------")
+        return "\n".join(map(str, string_list))
 
 
 scale = 1
 def read_tsp(type, value):
+    read_tsp_cat = directNotify.newCategory("ReadTSP")
+    read_tsp_cat.debug(f"Reading TSP file {value} of type {type.value}")
+
     path = f"src/tsp/{type.value}/{value}"
-    print(f"Reading TSP file from {path}")
     new_tsp = TSP(file_name=value)
     with open(path, 'r', encoding="utf-8") as f:
         coord_section = False
@@ -84,5 +88,5 @@ def read_tsp(type, value):
                 x_cord = float(split[1])*scale
                 y_cord = float(split[2])*scale
                 new_tsp.add_coord(name, x_cord, y_cord)
-    print(new_tsp)
+    read_tsp_cat.debug(new_tsp)
     return new_tsp

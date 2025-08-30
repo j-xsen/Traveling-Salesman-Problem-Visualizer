@@ -2,6 +2,7 @@ import os
 import time
 from itertools import permutations
 
+from direct.directnotify.DirectNotifyGlobal import directNotify
 from direct.gui.DirectButton import DirectButton
 from direct.gui.DirectSlider import DirectSlider
 from panda3d.core import NodePath, CollisionHandlerQueue, CollisionTraverser, CollisionNode, CollisionRay, GeomNode, \
@@ -10,12 +11,14 @@ from panda3d.core import NodePath, CollisionHandlerQueue, CollisionTraverser, Co
 from src.Bus import Bus
 from src.City import City
 
-
 class Map(NodePath):
     def __init__(self, TSP=None):
         NodePath.__init__(self, "map")
         self.reparentTo(render)
         self._TSP = TSP
+        self.notify = directNotify.newCategory("Map")
+
+        self.rendering = True
 
         # add collision traverser and handler
         self.c_trav = CollisionTraverser()
@@ -32,13 +35,6 @@ class Map(NodePath):
 
         self.bus = Bus()
         self.bus.reparentTo(self)
-
-        self.generate_routes_button = DirectButton(text="Generate Routes", scale=0.07,
-                                                   pos=(1, 0, -0.9),
-                                                   command=self.generate_routes)
-        self.reset_button = DirectButton(text="Reset", scale=0.07,
-                                         pos=(1, 0, -0.8),
-                                         command=self.reset)
 
         ## distance slider node
         distance_slider_node = NodePath("DistanceSlider")
@@ -62,7 +58,22 @@ class Map(NodePath):
         self.setPos(0, self.slider['value'], 0)
         self.cities = []
         if self.TSP is not None:
-            self.create_cities(self.TSP.coords)
+            self.create_cities(self.TSP.coords, self.rendering)
+
+    def disable_rendering(self):
+        self.rendering = False
+        self.bus.making_stops = False
+        self.clear_cities()
+        self.recreate_cities()
+
+    def enable_rendering(self):
+        self.rendering = True
+        self.bus.making_stops = True
+        self.slider.show()
+        for city in self.cities:
+            city.show()
+        self.route_text_path.show()
+        self.bus.distance_text_path.show()
 
     def get_current_loaded_file(self):
         if self.TSP is not None:
@@ -80,35 +91,15 @@ class Map(NodePath):
 
     def memory_reset(self):
         self.reset()
+        self.clear_cities()
+
+    def clear_cities(self):
         for city in self.cities:
             city.removeNode()
         self.cities = []
 
-    def generate_routes(self):
-        start_time = time.perf_counter()
-        results = []
-        for p in permutations(range(len(self.cities))):
-            self.reset()
-            for city_index in p:
-                self.select_city(str(city_index + 1))
-            self.select_city(str(p[0] + 1))  # return to start
-            results.append((self.bus.distance_traveled, self.route))
-        results.sort(key=lambda x: x[0])
-        with open(f"results/{self.TSP.name}.txt", "w") as f:
-            f.write("----- Results -----\n")
-            for distance, route in results:
-                f.write(f"Distance: {distance}, Route: {', '.join(route)}\n")
-            f.write("-------------------")
-            f.flush()
-            os.fsync(f.fileno())
-        elapsed= time.perf_counter() - start_time
-        with open(f"results/{self.TSP.name}_time.txt", "w") as f:
-            f.write(f"Time taken: {elapsed} seconds\n")
-            f.flush()
-            os.fsync(f.fileno())
-
     def create_city(self, name, coords):
-        new_city = City(name, coords)
+        new_city = City(name, coords, self.rendering)
         new_city.reparentTo(self)
         self.cities.append(new_city)
 
@@ -118,15 +109,19 @@ class Map(NodePath):
             self.create_city(city_id, coords)
             city_id += 1
 
+    def recreate_cities(self):
+        if self.TSP is not None:
+            self.create_cities(self.TSP.coords)
+
     def select_city(self, city_id):
         is_selected = self.cities[int(city_id) - 1].selected
         is_first_city = (len(self.route) == 0) or self.cities[int(city_id) - 1].first_city
-        print(f"Selecting city {city_id} first_city: {is_first_city})")
+        self.notify.debug(f"Selecting city {city_id}")
         # check if city already selected
         if is_selected:
             # check if not first city
             if not is_first_city:
-                print(f"City {city_id} already selected")
+                self.notify.warning(f"City {city_id} already selected")
                 return
         self.route.append(city_id)
         self.route_text.setText(f"Route: {', '.join(self.route)}")
@@ -134,7 +129,7 @@ class Map(NodePath):
 
         # check if loop
         if is_selected and is_first_city:
-            print("Route complete")
+            self.notify.debug("Route complete")
             self.route_complete = True
             for city in self.cities:
                 city.set_circuit_complete()
@@ -171,7 +166,7 @@ class Map(NodePath):
         return self._TSP
     @TSP.setter
     def TSP(self, value):
-        print(f"Setting TSP to {value.name}")
+        self.notify.debug(f"Setting TSP to {value.name}")
         self.memory_reset()
         self._TSP = value
         self.create_cities(value.coords)

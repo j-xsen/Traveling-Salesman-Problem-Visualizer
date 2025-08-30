@@ -1,14 +1,12 @@
 import sys
-from enum import Enum
 
-from direct.gui.DirectButton import DirectButton
+from direct.directnotify.DirectNotifyGlobal import directNotify
 from direct.gui.DirectRadioButton import DirectRadioButton
 from direct.showbase.ShowBase import ShowBase
 from panda3d.core import loadPrcFile, VirtualFileSystem, Filename
 
 from src.Map import Map
-from src.Mode import Mode, ProblemType, FIRST_SEARCH_MODE, BRUTE_FORCE_MODE
-from src.TSP import read_tsp
+from src.Mode import BruteForceMode, FirstSearchMode
 
 loadPrcFile("./config.prc")
 
@@ -22,6 +20,8 @@ class TravelingSalesmanProblem(ShowBase):
         vfs = VirtualFileSystem.getGlobalPtr()
         vfs.mount(Filename("models.mf"), ".", VirtualFileSystem.MFReadOnly)
 
+        self.notify = directNotify.newCategory("TSPApp")
+
         # map
         self.map = Map()
 
@@ -31,13 +31,17 @@ class TravelingSalesmanProblem(ShowBase):
         # accept close program
         self.accept("escape", sys.exit)
 
-        # mode
-        self._mode = BRUTE_FORCE_MODE
+        # modes
+        BFMode = BruteForceMode(self.map)
+        FSMode = FirstSearchMode(self.map)
+        self._mode = BFMode
 
         # mode radio buttons
         buttons = [
-            DirectRadioButton(text="Brute Force", scale=0.07, pos=(0.9, 0, 0.9), variable=[self.mode], value=[BRUTE_FORCE_MODE], command=self.set_mode, extraArgs=[BRUTE_FORCE_MODE]),
-            DirectRadioButton(text="Breadth/Depth First Search", scale=0.07, pos=(0.7, 0, 0.8), variable=[self.mode], value=[FIRST_SEARCH_MODE], command=self.set_mode, extraArgs=[FIRST_SEARCH_MODE])
+            DirectRadioButton(text="Brute Force", scale=0.07, pos=(0.9, 0, 0.9), variable=[self.mode], value=[BFMode],
+                              command=self.set_mode, extraArgs=[BFMode]),
+            DirectRadioButton(text="Breadth/Depth First Search", scale=0.07, pos=(0.7, 0, 0.8), variable=[self.mode],
+                              value=[FSMode], command=self.set_mode, extraArgs=[FSMode])
         ]
         for button in buttons:
             button.setOthers(buttons)
@@ -51,9 +55,11 @@ class TravelingSalesmanProblem(ShowBase):
     @property
     def mode(self):
         return self._mode
+
     @mode.setter
     def mode(self, value):
-        print("Switching mode to", value.type)
+        if self._mode:
+            self.notify.debug(f"Switching mode to {value.type}")
         if self._mode != value:
             self.mode.deactivate()
             self._mode = value

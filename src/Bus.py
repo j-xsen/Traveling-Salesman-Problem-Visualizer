@@ -1,5 +1,6 @@
 import math
 
+from direct.directnotify.DirectNotifyGlobal import directNotify
 from panda3d.core import NodePath, TextNode, PandaNode
 
 
@@ -15,11 +16,10 @@ def distance(point1, point2):
 class Stop(NodePath):
     def __init__(self, from_city, to_city):
         NodePath.__init__(self, "Stop")
-        print(f"Creating stop from {from_city} to {to_city}")
+        self.notify = directNotify.newCategory("Stop")
+        self.notify.debug(f"Creating stop from {from_city} to {to_city}")
         self.from_city = from_city
         self.to_city = to_city
-
-        print(f"Distance: {distance(from_city, to_city)}")
 
         # # ARROW BODY
         self.model = loader.loadModel("arrow_body.bam")
@@ -55,8 +55,11 @@ class Stop(NodePath):
 class Bus(NodePath):
     def __init__(self):
         NodePath.__init__(self, "Bus")
+        self.notify = directNotify.newCategory("Bus")
         self._distance_traveled = 0
         self._current_coords = None
+
+        self.making_stops = True
 
         # gui
         distance_text = TextNode("distance")
@@ -69,10 +72,11 @@ class Bus(NodePath):
         self.stops.reparentTo(self)
 
     def add_stop(self, to_city_coords):
-        print(f"Adding stop to {to_city_coords}")
-        if self.current_coords is not None:
-            new_stop = Stop(self.current_coords, to_city_coords)
-            new_stop.reparentTo(self.stops)
+        if self.making_stops:
+            self.notify.debug(f"Adding stop to {to_city_coords}")
+            if self.current_coords is not None:
+                new_stop = Stop(self.current_coords, to_city_coords)
+                new_stop.reparentTo(self.stops)
         self.current_coords = to_city_coords
 
     def reset(self):
