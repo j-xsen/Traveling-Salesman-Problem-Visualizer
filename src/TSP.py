@@ -12,12 +12,13 @@ class Coord:
 
 
 class TSP:
-    def __init__(self, name="", dimension=0, coords=None):
+    def __init__(self, name="", dimension=0, coords=None, file_name=""):
         if coords is None:
             coords = []
         self._name = name
-        self.dimension = dimension
-        self.coords = coords
+        self._file_name = ""
+        self._dimension = file_name
+        self._coords = coords
 
     def add_coord(self, name, x, y):
         self._coords.append(Coord(name, x, y))
@@ -43,6 +44,13 @@ class TSP:
     def coords(self, value):
         self._coords = value
 
+    @property
+    def file_name(self):
+        return self._file_name
+    @file_name.setter
+    def file_name(self, value):
+        self._file_name = value
+
     def __str__(self):
         print("--- TSP Instance ---")
         print(f"Name: {self.name}")
@@ -53,8 +61,10 @@ class TSP:
 
 
 scale = 1
-def read_tsp(path):
-    new_tsp = TSP()
+def read_tsp(type, value):
+    path = f"src/tsp/{type.value}/{value}"
+    print(f"Reading TSP file from {path}")
+    new_tsp = TSP(file_name=value)
     with open(path, 'r', encoding="utf-8") as f:
         coord_section = False
         for line in f:

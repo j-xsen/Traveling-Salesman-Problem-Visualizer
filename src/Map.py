@@ -64,6 +64,11 @@ class Map(NodePath):
         if self.TSP is not None:
             self.create_cities(self.TSP.coords)
 
+    def get_current_loaded_file(self):
+        if self.TSP is not None:
+            return self.TSP.file_name
+        return ""
+
     def reset(self):
         for city in self.cities:
             city.selected = False
@@ -164,7 +169,9 @@ class Map(NodePath):
     @property
     def TSP(self):
         return self._TSP
-
     @TSP.setter
     def TSP(self, value):
+        print(f"Setting TSP to {value.name}")
+        self.memory_reset()
         self._TSP = value
+        self.create_cities(value.coords)
