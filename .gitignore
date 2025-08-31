@@ -3,3 +3,8 @@
 __pycache__/**
 .venv/**
 *.pdf
+
+# oversized result files
+results/concorde10.txt
+results/concorde11.txt
+results/concorde12.txt
