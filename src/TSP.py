@@ -62,7 +62,7 @@ class TSP:
         return "\n".join(map(str, string_list))
 
 
-scale = 2
+scale = 1
 def read_tsp(type, value):
     read_tsp_cat = directNotify.newCategory("ReadTSP")
     read_tsp_cat.debug(f"Reading TSP file {value} of type {type.value}")

@@ -25,7 +25,7 @@ class PositionSlider(NodePath):
             case 0:
                 dir_str = "X (Left/Right)"
             case 1:
-                dir_str = "Z (Forward/Back)"
+                dir_str = "Z (Back/Forward)"
             case 2:
                 dir_str = "Y (Up/Down)"
             case _:

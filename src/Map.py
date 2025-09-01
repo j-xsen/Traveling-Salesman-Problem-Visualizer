@@ -45,13 +45,13 @@ class Map(NodePath):
         self.bus.reparentTo(self)
 
         ## horizontal slider node
-        h_slider_node = PositionSlider(range=(-100, 0), default=-50, position=0,command=self.setX)
+        h_slider_node = PositionSlider(range=(-100, 100), default=00, position=0,command=self.setX)
 
         # ## distance (y) slider node
-        distance_slider_node = PositionSlider(range=(1000,0), position=1, command=self.setY, default=500)
+        distance_slider_node = PositionSlider(range=(700,100), position=1, command=self.setY, default=500)
 
         ## vertical slider node
-        v_slider_node = PositionSlider(range=(-125,75), default=-25, position=2, command=self.setZ)
+        v_slider_node = PositionSlider(range=(-75,75), default=0, position=2, command=self.setZ)
 
         self.setPos(0, 0, 0)
         self.cities = []
@@ -70,7 +70,6 @@ class Map(NodePath):
     def enable_rendering(self):
         self.rendering = True
         self.bus.making_stops = True
-        self.slider.show()
         for city in self.cities:
             city.show()
         self.route_text_path.show()
