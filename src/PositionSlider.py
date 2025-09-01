@@ -40,8 +40,13 @@ class PositionSlider(NodePath):
         slider_node_path.setPos(0, 0, 0.1)
 
         # slider
+        slider_thumb_scale = 0.15
         self.slider = DirectSlider(range=self.range, value=default, scale=0.3,
-                                     command=self.update_value )
+                                     command=self.update_value,
+                                   thumb_frameSize=(-slider_thumb_scale,
+                                                    slider_thumb_scale,
+                                                    -slider_thumb_scale,
+                                                    slider_thumb_scale))
         self.slider.reparentTo(self)
 
         # command

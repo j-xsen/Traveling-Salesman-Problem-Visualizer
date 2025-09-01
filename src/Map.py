@@ -45,30 +45,13 @@ class Map(NodePath):
         self.bus.reparentTo(self)
 
         ## horizontal slider node
-        h_slider_node = PositionSlider(position=0,command=self.setX)
+        h_slider_node = PositionSlider(range=(-100, 0), default=-50, position=0,command=self.setX)
 
         # ## distance (y) slider node
         distance_slider_node = PositionSlider(range=(1000,0), position=1, command=self.setY, default=500)
 
         ## vertical slider node
-        v_slider_node = PositionSlider(position=2, command=self.setZ)
-        # distance_slider_node = NodePath("DistanceSlider")
-        # distance_slider_node.setPos(-.95, 0, -.4)
-        # distance_slider_node.reparentTo(aspect2d)
-        #
-        # # text
-        # distance_slider_text = TextNode("distance_slider")
-        # distance_slider_text.setText("Zoom")
-        # distance_slider_text.setAlign(TextNode.ACenter)
-        # distance_slider_node_path = distance_slider_node.attachNewNode(distance_slider_text)
-        # distance_slider_node_path.setScale(0.07)
-        # distance_slider_node_path.setPos(0, 0, 0.1)
-        #
-        # # slider
-        # self.slider = DirectSlider(range=(1000, 0), value=500, scale=0.3,
-        #                            command=lambda: self.setY(self.slider['value']),)
-        # self.slider.reparentTo(distance_slider_node)
-
+        v_slider_node = PositionSlider(range=(-125,75), default=-25, position=2, command=self.setZ)
 
         self.setPos(0, 0, 0)
         self.cities = []
