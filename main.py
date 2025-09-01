@@ -34,7 +34,7 @@ class TravelingSalesmanProblem(ShowBase):
         # modes
         BFMode = BruteForceMode(self.map)
         FSMode = FirstSearchMode(self.map)
-        self._mode = BFMode
+        self._mode = FSMode
 
         # mode radio buttons
         buttons = [
@@ -45,9 +45,6 @@ class TravelingSalesmanProblem(ShowBase):
         ]
         for button in buttons:
             button.setOthers(buttons)
-
-        # accept mouse
-        self.accept("mouse1-up", self.map.on_mouse_click)
 
         # start mode
         self.mode.activate(self.map)

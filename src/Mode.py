@@ -10,6 +10,7 @@ from direct.showbase.DirectObject import DirectObject
 from direct.showbase.MessengerGlobal import messenger
 from direct.task.TaskManagerGlobal import taskMgr
 
+from src.Bus import Stop
 from src.TSP import read_tsp
 
 
@@ -35,9 +36,12 @@ class Mode(DirectObject):
         self.last_loaded = None
         self.accept("TSPChanged", self.update_last_loaded)
 
+    def on_mouse_click(self):
+        self.notify.warning("Mouse click not handled in base Mode class")
+        pass
+
     def destroy(self):
         self.ignoreAll()
-        self.deactivate()
         self.ui.clear()
         self.files.clear()
         self.problem_buttons.clear()
@@ -50,12 +54,13 @@ class Mode(DirectObject):
         pass
 
     def destroy_ui(self):
-        for element in self.ui:
-            element.destroy()
-        self.ui.clear()
+        for button in self.problem_buttons:
+            button.destroy()
+        self.problem_buttons.clear()
 
     def activate(self, _map):
         self.notify.debug(f"Activating mode {self.type}")
+        self.accept("mouse1-up", self.on_mouse_click)
         self.load_problem(_map, self.default, "default")
         self.generate_buttons(_map)
         self.build_ui()
@@ -64,7 +69,7 @@ class Mode(DirectObject):
         for button in self.problem_buttons:
             button.destroy()
         self.last_loaded = None
-        self.destroy_ui()
+        self.destroy()
         self.problem_buttons.clear()
 
     def generate_files(self):
@@ -130,9 +135,38 @@ class FirstSearchMode(Mode):
         super().__init__(ProblemType.FIRST_SEARCH, '11PointDFSBFS.tsp')
         self.map = _map
 
+    def on_mouse_click(self):
+        self.notify.debug("FirstSearchMode mouse click")
+        self.map.on_mouse_click("Stop")
+
     def build_ui(self):
         pass
 
+    def load_problem(self, _map, file, src=""):
+        super().load_problem(_map, file, src)
+        # create stops
+        # hard coding each file
+        stops_to_make = []
+        match file:
+            case "11PointDFSBFS.tsp":
+                stops_to_make = [[1,2],[1,3],[1,4],
+                         [2,3],[3,4],[3,5],
+                         [4,5],[4,6],[4,7],
+                         [5,7],[5,8],
+                         [6,8],
+                         [7,9],[7,10],
+                         [8,9],[8,10],[8,11],
+                         [9,11],
+                         [10,11]]
+
+        if stops_to_make==[]:
+            self.notify.warning(f"No stops defined for {file}")
+            return
+        for stop in stops_to_make:
+            city_from = self.map.cities[stop[0]-1]
+            city_to = self.map.cities[stop[1]-1]
+            new_stop = Stop(city_from.coords, city_to.coords)
+            new_stop.reparentTo(self.map.bus.stops)
 
 class BruteForceMode(Mode):
     def __init__(self, _map):
@@ -148,6 +182,11 @@ class BruteForceMode(Mode):
                                     command=self.map.reset)
         self.ui.append(generate_routes_button)
         self.ui.append(reset_button)
+
+    def on_mouse_click(self):
+        self.notify.debug("BruteForceMode mouse click")
+        # accept mouse
+        self.map.on_mouse_click("ClickableCity")
 
     def generate_routes(self):
         self.map.disable_rendering()

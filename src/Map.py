@@ -9,6 +9,7 @@ from direct.showbase.MessengerGlobal import messenger
 from panda3d.core import NodePath, CollisionHandlerQueue, CollisionTraverser, CollisionNode, CollisionRay, GeomNode, \
     TextNode
 
+from src.TSP import scale
 from src.Bus import Bus
 from src.City import City
 from src.PositionSlider import PositionSlider
@@ -45,13 +46,14 @@ class Map(NodePath):
         self.bus.reparentTo(self)
 
         ## horizontal slider node
-        h_slider_node = PositionSlider(range=(-100, 100), default=00, position=0,command=self.setX)
+        h_slider_node = PositionSlider(range=(-100-(scale*5), 100), default=0, position=0,command=self.setX)
 
         # ## distance (y) slider node
         distance_slider_node = PositionSlider(range=(700,100), position=1, command=self.setY, default=500)
 
         ## vertical slider node
-        v_slider_node = PositionSlider(range=(-75,75), default=0, position=2, command=self.setZ)
+        default = (200-(scale*100))
+        v_slider_node = PositionSlider(range=(default-(scale*75),default+(scale*75)), default=default, position=2, command=self.setZ)
 
         self.setPos(0, 0, 0)
         self.cities = []
@@ -138,7 +140,7 @@ class Map(NodePath):
         self.cities[int(city_id) - 1].selected = True
         self.cities[int(city_id) - 1].first_city = is_first_city
 
-    def on_mouse_click(self):
+    def on_mouse_click(self, tag="ClickableCity"):
         # https://docs.panda3d.org/1.10/python/programming/collision-detection/clicking-on-3d-objects
         if base.mouseWatcherNode.hasMouse():
             mpos = base.mouseWatcherNode.getMouse()
@@ -153,12 +155,12 @@ class Map(NodePath):
             if self.c_handler.getNumEntries() > 0:
                 self.c_handler.sortEntries()
                 pickedObj = self.c_handler.getEntry(0).getIntoNodePath()
-                pickedObj = pickedObj.findNetTag("ClickableCity")
+                pickedObj = pickedObj.findNetTag(tag)
                 if not pickedObj.isEmpty():
-                    # check if reset needed
-                    if self.route_complete:
-                        self.reset()
-                    self.select_city(str(pickedObj).split("-")[1])
+                    if tag == "ClickableCity":
+                        if self.route_complete:
+                            self.reset()
+                        self.select_city(str(pickedObj).split("-")[1])
             pickerNP.removeNode()
 
     @property

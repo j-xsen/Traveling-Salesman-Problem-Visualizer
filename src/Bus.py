@@ -16,6 +16,7 @@ def distance(point1, point2):
 class Stop(NodePath):
     def __init__(self, from_city, to_city):
         NodePath.__init__(self, "Stop")
+        self.setTag("Stop", f"{from_city.name}-{to_city.name}")
         self.notify = directNotify.newCategory("Stop")
         self.notify.debug(f"Creating stop from {from_city} to {to_city}")
         self.from_city = from_city
