@@ -61,6 +61,7 @@ class TravelingSalesmanProblem(ShowBase):
         if self._mode:
             self.notify.debug(f"Switching mode to {value.type}")
         if self._mode != value:
+            self.notify.debug(f"Changing mode from {self._mode.type} to {value.type}")
             self.mode.deactivate()
             self._mode = value
             self.mode.activate(self.map)

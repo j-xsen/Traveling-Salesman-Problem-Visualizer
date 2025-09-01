@@ -6,6 +6,9 @@ from itertools import permutations
 from direct.directnotify.DirectNotifyGlobal import directNotify
 from direct.gui.DirectButton import DirectButton
 from direct.gui.DirectRadioButton import DirectRadioButton
+from direct.showbase.DirectObject import DirectObject
+from direct.showbase.MessengerGlobal import messenger
+from direct.task.TaskManagerGlobal import taskMgr
 
 from src.TSP import read_tsp
 
@@ -15,8 +18,9 @@ class ProblemType(Enum):
     FIRST_SEARCH = "FS"
 
 
-class Mode:
+class Mode(DirectObject):
     def __init__(self, problem_type, default_problem):
+        DirectObject.__init__(self)
         # notifier
         self.notify = directNotify.newCategory("Mode")
         # mode variables
@@ -29,6 +33,18 @@ class Mode:
         self.problem_buttons = []
         # last loaded
         self.last_loaded = None
+        self.accept("TSPChanged", self.update_last_loaded)
+
+    def destroy(self):
+        self.ignoreAll()
+        self.deactivate()
+        self.ui.clear()
+        self.files.clear()
+        self.problem_buttons.clear()
+
+    def update_last_loaded(self, file):
+        self.notify.debug(f"Updating last loaded to {file}")
+        self.last_loaded = file
 
     def build_ui(self):
         pass
@@ -41,8 +57,8 @@ class Mode:
     def activate(self, _map):
         self.notify.debug(f"Activating mode {self.type}")
         self.load_problem(_map, self.default, "default")
-        self.build_ui()
         self.generate_buttons(_map)
+        self.build_ui()
 
     def deactivate(self):
         for button in self.problem_buttons:
@@ -62,6 +78,7 @@ class Mode:
 
     def generate_buttons(self, _map):
         self.problem_buttons.clear()
+        self.notify.debug(f"Generating buttons for {len(self.files)} files.")
         for index, file in enumerate(self.files):
             col = index % 3
             row = index // 3
@@ -72,12 +89,15 @@ class Mode:
                 pos=(-1 + col * 0.4, 0, -row * 0.15 - 0.6),
                 variable=[self.last_loaded],
                 value=[file],
-                command=self.load_problem,
                 extraArgs=[_map, file, f"drb{file}"]
             )
+            if file == _map.get_current_loaded_file():
+                button.set_state(True)
             self.problem_buttons.append(button)
         for button in self.problem_buttons:
             button.setOthers(self.problem_buttons)
+            button['command'] = self.load_problem
+            button['extraArgs'] = [_map, button['value'][0], f"drb{button['value'][0]}"]
 
     def load_problem(self, _map, file, src=""):
         self.notify.debug(f"Loading problem {file} from {src}")
@@ -85,8 +105,8 @@ class Mode:
             self.notify.warning("Problem already loaded.")
             return
         imported_tsp = read_tsp(self.type, file)
-        self.last_loaded = file
         _map.TSP = imported_tsp
+        self.last_loaded = file
 
     @property
     def type(self):
