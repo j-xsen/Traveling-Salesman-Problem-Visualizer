@@ -35,6 +35,7 @@ class Mode(DirectObject):
         pass
 
     def destroy(self):
+        self.destroy_ui()
         self.ignoreAll()
         self.ui.clear()
         self.files.clear()
@@ -51,6 +52,9 @@ class Mode(DirectObject):
         for button in self.problem_buttons:
             button.destroy()
         self.problem_buttons.clear()
+        for element in self.ui:
+            element.destroy()
+        self.ui.clear()
 
     def activate(self, _map):
         self.notify.debug(f"Activating modes {self.type}")

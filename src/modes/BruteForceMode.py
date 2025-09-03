@@ -22,16 +22,16 @@ class BruteForceMode(Mode):
         self.ui.append(generate_routes_button)
         self.ui.append(reset_button)
 
+    def activate(self, _map):
+        Mode.activate(self, _map)
+        self.map.bus.making_stops = True
+
     def on_mouse_click(self):
-        self.notify.debug("BruteForceMode mouse click")
         # accept mouse
         selected_city = self.map.on_mouse_click("ClickableCity")
         if selected_city is None:
-            self.notify.debug("Clicked outside a city")
             return
-        self.notify.debug(f"Selected city {selected_city}")
         if self.map.route_complete:
-            self.notify.debug("Route complete, resetting")
             self.map.reset()
         self.map.select_city(str(selected_city).split("-")[1])
 

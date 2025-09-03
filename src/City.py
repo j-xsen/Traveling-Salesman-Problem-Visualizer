@@ -1,10 +1,6 @@
 from panda3d.core import NodePath, TextNode
 
-# colors
-UNSELECTED = (0, 1, 0, 1)
-SELECTED = (1, 0, 0, 1)
-FIRST_SELECTED = (0, 0, 1, 1)
-CIRCUIT_COMPLETE = (1, .84, 0, 1)
+from src.UIGlobals import Colors
 
 
 class City(NodePath):
@@ -32,13 +28,13 @@ class City(NodePath):
 
     def set_circuit_complete(self):
         if self.rendering:
-            self.model.setColor(CIRCUIT_COMPLETE)
+            self.model.setColor(Colors.CIRCUIT_COMPLETE)
 
     def reset(self):
         self.selected = False
         self.first_city = False
         if self.rendering:
-            self.model.setColor(UNSELECTED)
+            self.model.setColor(Colors.UNSELECTED)
 
     @property
     def coords(self):
@@ -62,9 +58,9 @@ class City(NodePath):
         self._selected = value
         if self.rendering:
             if self.first_city:
-                self.model.setColor(FIRST_SELECTED)
+                self.model.setColor(Colors.FIRST_SELECTED)
             else:
-                self.model.setColor(SELECTED if value else UNSELECTED)
+                self.model.setColor(Colors.SELECTED if value else Colors.UNSELECTED)
 
     @property
     def first_city(self):
@@ -75,9 +71,9 @@ class City(NodePath):
         self._first_city = value
         if self.rendering:
             if value and self.selected:
-                self.model.setColor(FIRST_SELECTED)
+                self.model.setColor(Colors.FIRST_SELECTED)
             else:
-                self.model.setColor(SELECTED if self.selected else UNSELECTED)
+                self.model.setColor(Colors.SELECTED if self.selected else Colors.UNSELECTED)
 
     @property
     def name(self):

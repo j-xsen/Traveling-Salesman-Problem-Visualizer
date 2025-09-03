@@ -6,10 +6,73 @@ class FirstSearchMode(Mode):
     def __init__(self, _map):
         super().__init__(ProblemType.FIRST_SEARCH, '11PointDFSBFS.tsp')
         self.map = _map
+        self.stops = {}
+        self._current_city = None
+
+    def activate(self, _map):
+        super().activate(_map)
+        self.map.bus.making_stops = False
+
+    @property
+    def current_city(self):
+        return self._current_city
+    @current_city.setter
+    def current_city(self, value):
+        if self._current_city is not None:
+            self.notify.debug("Checking if next city is valid")
+            if not self.is_valid_next_city(value):
+                self.notify.warning(f"City {value} is not a valid next city from {self.current_city}")
+                return
+        else:
+            self.notify.debug("Setting starting city")
+        self._current_city = value
+
+    def is_valid_next_city(self, city_name):
+        if self.current_city is None:
+            return True
+        for stop in self.stops.values():
+            if int(stop.from_city.name) == int(self.current_city):
+                if stop.to_city.name == city_name:
+                    self.notify.debug(f"Valid next city found {city_name}")
+                    return True
+        return False
+
+    def deactivate(self):
+        Mode.deactivate(self)
+        self.stops = {}
+        self._current_city = None
 
     def on_mouse_click(self):
-        self.notify.debug("FirstSearchMode mouse click")
-        self.map.on_mouse_click("Stop")
+        # is first city?
+        if self.current_city is None:
+            selected_city = self.map.on_mouse_click("ClickableCity")
+            if selected_city is None:
+                return
+            self.current_city = str(selected_city).split("-")[1]
+            self.notify.debug(f"Starting city set to {self.current_city}")
+            self.map.select_city(self.current_city)
+            return
+        # check if stop clicked
+        obj = self.map.on_mouse_click("Stop")
+        if obj is None:
+            return
+        stop_name = str(obj).split('/')[-1]
+        self.notify.debug(f"Clicked on stop {stop_name}")
+
+        # check if from valid
+        if not self.is_valid_next_city(self.stops[stop_name].to_city.name):
+            self.notify.warning(f"Stop {stop_name} is not a valid next stop from city {self.current_city}")
+            return
+        # select stop
+        self.map.select_city(self.stops[stop_name].to_city.name)
+        self.current_city = self.stops[stop_name].to_city.name
+        self.notify.debug(f"Current city updated to {self.current_city}")
+
+        if stop_name in self.stops:
+            selected_stop = self.stops[stop_name]
+            selected_stop.selected = not selected_stop.selected
+        else:
+            self.notify.warning(f"Clicked stop not found in stops: {stop_name}")
 
     def build_ui(self):
         pass
@@ -34,8 +97,11 @@ class FirstSearchMode(Mode):
         if stops_to_make==[]:
             self.notify.warning(f"No stops defined for {file}")
             return
+        i = 0
         for stop in stops_to_make:
             city_from = self.map.cities[stop[0]-1]
             city_to = self.map.cities[stop[1]-1]
-            new_stop = Stop(city_from.coords, city_to.coords)
-            new_stop.reparentTo(self.map.bus.stops)
+            new_stop = Stop(city_from.coords, city_to.coords, name=f"Stop-{i}")
+            self.stops[f"Stop-{i}"] = new_stop
+            new_stop.reparentTo(self.map.bus.stop_nodes)
+            i+=1

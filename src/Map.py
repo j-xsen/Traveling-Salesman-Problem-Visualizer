@@ -121,8 +121,8 @@ class Map(NodePath):
                 self.notify.warning(f"City {city_id} already selected")
                 return
         self.route.append(city_id)
-        self.route_text.setText(f"Route: {', '.join(self.route)}")
         self.bus.add_stop(self.cities[int(city_id) - 1].coords)
+        self.route_text.setText(f"Route: {', '.join(str(x) for x in self.route)}")
 
         # check if loop
         if is_selected and is_first_city:
