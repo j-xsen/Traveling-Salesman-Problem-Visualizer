@@ -62,6 +62,8 @@ class Mode(DirectObject):
         self.notify.debug(f"Activating mode {self.type}")
         self.accept("mouse1-up", self.on_mouse_click)
         self.load_problem(_map, self.default, "default")
+        if not self.files:
+            self.generate_files()
         self.generate_buttons(_map)
         self.build_ui()
 
@@ -110,7 +112,7 @@ class Mode(DirectObject):
             self.notify.warning("Problem already loaded.")
             return
         imported_tsp = read_tsp(self.type, file)
-        _map.TSP = imported_tsp
+        _map.tsp = imported_tsp
         self.last_loaded = file
 
     @property
@@ -186,7 +188,15 @@ class BruteForceMode(Mode):
     def on_mouse_click(self):
         self.notify.debug("BruteForceMode mouse click")
         # accept mouse
-        self.map.on_mouse_click("ClickableCity")
+        selected_city = self.map.on_mouse_click("ClickableCity")
+        if selected_city is None:
+            self.notify.debug("Clicked outside a city")
+            return
+        self.notify.debug(f"Selected city {selected_city}")
+        if self.map.route_complete:
+            self.notify.debug("Route complete, resetting")
+            self.map.reset()
+        self.map.select_city(str(selected_city).split("-")[1])
 
     def generate_routes(self):
         self.map.disable_rendering()
@@ -199,7 +209,7 @@ class BruteForceMode(Mode):
             self.map.select_city(str(p[0] + 1))  # return to start
             results.append((self.map.bus.distance_traveled, self.map.route))
         results.sort(key=lambda x: x[0])
-        with open(f"results/{self.map.TSP.name}.txt", "w") as f:
+        with open(f"results/{self.map.tsp.name}.txt", "w") as f:
             f.write("----- Results -----\n")
             for distance, route in results:
                 f.write(f"Distance: {distance}, Route: {', '.join(route)}\n")
@@ -207,7 +217,7 @@ class BruteForceMode(Mode):
             f.flush()
             os.fsync(f.fileno())
         elapsed = time.perf_counter() - start_time
-        with open(f"results/{self.map.TSP.name}_time.txt", "w") as f:
+        with open(f"results/{self.map.tsp.name}_time.txt", "w") as f:
             f.write(f"Time taken: {elapsed} seconds\n")
             f.flush()
             os.fsync(f.fileno())

@@ -1,11 +1,4 @@
-import os
-import time
-from itertools import permutations
-
 from direct.directnotify.DirectNotifyGlobal import directNotify
-from direct.gui.DirectButton import DirectButton
-from direct.gui.DirectSlider import DirectSlider
-from direct.showbase.MessengerGlobal import messenger
 from panda3d.core import NodePath, CollisionHandlerQueue, CollisionTraverser, CollisionNode, CollisionRay, GeomNode, \
     TextNode
 
@@ -20,11 +13,12 @@ render: 'NodePath'  # type: ignore
 aspect2d: 'NodePath'  # type: ignore
 base: 'ShowBase'  # type: ignore
 
+
 class Map(NodePath):
-    def __init__(self, TSP=None):
+    def __init__(self, tsp=None):
         NodePath.__init__(self, "map")
         self.reparentTo(render)
-        self._TSP = TSP
+        self._TSP = tsp
         self.notify = directNotify.newCategory("Map")
 
         self.rendering = True
@@ -46,19 +40,20 @@ class Map(NodePath):
         self.bus.reparentTo(self)
 
         ## horizontal slider node
-        h_slider_node = PositionSlider(range=(-100-(scale*5), 100), default=0, position=0,command=self.setX)
+        h_slider_node = PositionSlider(range=(-100 - (scale * 5), 100), default=0, position=0, command=self.setX)
 
         # ## distance (y) slider node
-        distance_slider_node = PositionSlider(range=(700,100), position=1, command=self.setY, default=500)
+        distance_slider_node = PositionSlider(range=(700, 100), position=1, command=self.setY, default=500)
 
         ## vertical slider node
-        default = (200-(scale*100))
-        v_slider_node = PositionSlider(range=(default-(scale*75),default+(scale*75)), default=default, position=2, command=self.setZ)
+        default = (200 - (scale * 100))
+        v_slider_node = PositionSlider(range=(default - (scale * 75), default + (scale * 75)), default=default,
+                                       position=2, command=self.setZ)
 
         self.setPos(0, 0, 0)
         self.cities = []
-        if self.TSP is not None:
-            self.create_cities(self.TSP.coords)
+        if self.tsp is not None:
+            self.create_cities(self.tsp.coords)
 
     def setX(self, x):
         self.setPos(x, self.getY(), self.getZ())
@@ -78,8 +73,8 @@ class Map(NodePath):
         self.bus.distance_text_path.show()
 
     def get_current_loaded_file(self):
-        if self.TSP is not None:
-            return self.TSP.file_name
+        if self.tsp is not None:
+            return self.tsp.file_name
         return "No TSP loaded"
 
     def reset(self):
@@ -112,8 +107,8 @@ class Map(NodePath):
             city_id += 1
 
     def recreate_cities(self):
-        if self.TSP is not None:
-            self.create_cities(self.TSP.coords)
+        if self.tsp is not None:
+            self.create_cities(self.tsp.coords)
 
     def select_city(self, city_id):
         is_selected = self.cities[int(city_id) - 1].selected
@@ -143,31 +138,30 @@ class Map(NodePath):
     def on_mouse_click(self, tag="ClickableCity"):
         # https://docs.panda3d.org/1.10/python/programming/collision-detection/clicking-on-3d-objects
         if base.mouseWatcherNode.hasMouse():
-            mpos = base.mouseWatcherNode.getMouse()
-            pickerNode = CollisionNode('mouseRay')
-            pickerNP = base.camera.attachNewNode(pickerNode)
-            pickerNode.setFromCollideMask(GeomNode.getDefaultCollideMask())
-            pickerRay = CollisionRay()
-            pickerRay.setFromLens(base.camNode, mpos.getX(), mpos.getY())
-            pickerNode.addSolid(pickerRay)
-            self.c_trav.addCollider(pickerNP, self.c_handler)
+            m_pos = base.mouseWatcherNode.getMouse()
+            picker_node = CollisionNode('mouseRay')
+            picker_np = base.camera.attachNewNode(picker_node)
+            picker_node.setFromCollideMask(GeomNode.getDefaultCollideMask())
+            picker_ray = CollisionRay()
+            picker_ray.setFromLens(base.camNode, m_pos.getX(), m_pos.getY())
+            picker_node.addSolid(picker_ray)
+            self.c_trav.addCollider(picker_np, self.c_handler)
             self.c_trav.traverse(base.render)
             if self.c_handler.getNumEntries() > 0:
                 self.c_handler.sortEntries()
-                pickedObj = self.c_handler.getEntry(0).getIntoNodePath()
-                pickedObj = pickedObj.findNetTag(tag)
-                if not pickedObj.isEmpty():
-                    if tag == "ClickableCity":
-                        if self.route_complete:
-                            self.reset()
-                        self.select_city(str(pickedObj).split("-")[1])
-            pickerNP.removeNode()
+                picked_obj = self.c_handler.getEntry(0).getIntoNodePath()
+                picked_obj = picked_obj.findNetTag(tag)
+                picker_np.removeNode()
+                return picked_obj if not picked_obj.isEmpty() else None
+            picker_np.removeNode()
+        return None
 
     @property
-    def TSP(self):
+    def tsp(self):
         return self._TSP
-    @TSP.setter
-    def TSP(self, value):
+
+    @tsp.setter
+    def tsp(self, value):
         self.notify.debug(f"Setting TSP to {value.name}")
         self.memory_reset()
         self._TSP = value
