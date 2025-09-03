@@ -6,7 +6,8 @@ from direct.showbase.ShowBase import ShowBase
 from panda3d.core import loadPrcFile, VirtualFileSystem, Filename
 
 from src.Map import Map
-from src.Mode import BruteForceMode, FirstSearchMode
+from src.modes.BruteForceMode import BruteForceMode
+from src.modes.FirstSearchMode import FirstSearchMode
 
 loadPrcFile("./config.prc")
 
@@ -36,7 +37,7 @@ class TravelingSalesmanProblem(ShowBase):
         FSMode = FirstSearchMode(self.map)
         self._mode = FSMode
 
-        # mode radio buttons
+        # modes radio buttons
         buttons = [
             DirectRadioButton(text="Brute Force", scale=0.07, pos=(0.9, 0, 0.9), variable=[self.mode], value=[BFMode],
                               command=self.set_mode, extraArgs=[BFMode]),
@@ -46,7 +47,7 @@ class TravelingSalesmanProblem(ShowBase):
         for button in buttons:
             button.setOthers(buttons)
 
-        # start mode
+        # start modes
         self.mode.activate(self.map)
 
     @property
