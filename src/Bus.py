@@ -71,7 +71,7 @@ class Stop(NodePath):
     def selected(self, value):
         self._selected = value
         for children in self.getChildren():
-            children.setColor(Colors.SELECTED if value else Colors.UNSELECTED)
+            children.setColor(Colors.SELECTED if value else Colors.WHITE)
 
 
 class Bus(NodePath):
@@ -105,9 +105,10 @@ class Bus(NodePath):
     def reset(self):
         self.current_coords = None
         self.distance_traveled = 0
-        self.stop_nodes.removeNode()
-        self.stop_nodes = NodePath("Stops")
-        self.stop_nodes.reparentTo(self)
+        if self.making_stops:
+            self.stop_nodes.removeNode()
+            self.stop_nodes = NodePath("Stops")
+            self.stop_nodes.reparentTo(self)
 
     @property
     def distance_traveled(self):

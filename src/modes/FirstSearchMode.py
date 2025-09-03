@@ -1,3 +1,5 @@
+from direct.gui.DirectButton import DirectButton
+
 from src.Bus import Stop
 from src.modes.Mode import Mode, ProblemType
 
@@ -12,6 +14,12 @@ class FirstSearchMode(Mode):
     def activate(self, _map):
         super().activate(_map)
         self.map.bus.making_stops = False
+
+    def reset(self):
+        self._current_city = None
+        for stop in self.stops.values():
+            stop.selected = False
+        self.map.reset()
 
     @property
     def current_city(self):
@@ -29,6 +37,7 @@ class FirstSearchMode(Mode):
 
     def is_valid_next_city(self, city_name):
         if self.current_city is None:
+            self.notify.debug("No current city, any city is valid")
             return True
         for stop in self.stops.values():
             if int(stop.from_city.name) == int(self.current_city):
@@ -60,6 +69,11 @@ class FirstSearchMode(Mode):
         self.notify.debug(f"Clicked on stop {stop_name}")
 
         # check if from valid
+        # ensure proper from
+        if int(self.stops[stop_name].from_city.name) != int(self.current_city):
+            self.notify.warning(f"Stop {self.stops[stop_name].from_city.name} is not a valid stop from current city {self.current_city}")
+            return
+        # ensure proper to
         if not self.is_valid_next_city(self.stops[stop_name].to_city.name):
             self.notify.warning(f"Stop {stop_name} is not a valid next stop from city {self.current_city}")
             return
@@ -75,7 +89,10 @@ class FirstSearchMode(Mode):
             self.notify.warning(f"Clicked stop not found in stops: {stop_name}")
 
     def build_ui(self):
-        pass
+        reset_button = DirectButton(text="Reset", scale=0.07,
+                                    pos=(1, 0, -0.8),
+                                    command=self.reset)
+        self.ui.append(reset_button)
 
     def load_problem(self, _map, file, src=""):
         super().load_problem(_map, file, src)
