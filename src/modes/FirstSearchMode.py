@@ -1,6 +1,6 @@
 from direct.gui.DirectButton import DirectButton
 
-from src.Bus import Stop
+from src.bus.Bus import Stop
 from src.modes.Mode import Mode, ProblemType
 
 
@@ -10,6 +10,7 @@ class FirstSearchMode(Mode):
         self.map = _map
         self.stops = {}
         self._current_city = None
+        self._final_city = None
 
     def activate(self, _map):
         super().activate(_map)
@@ -17,6 +18,7 @@ class FirstSearchMode(Mode):
 
     def reset(self):
         self._current_city = None
+        self._final_city = None
         for stop in self.stops.values():
             stop.selected = False
         self.map.reset()
@@ -34,6 +36,13 @@ class FirstSearchMode(Mode):
         else:
             self.notify.debug("Setting starting city")
         self._current_city = value
+
+    @property
+    def final_city(self):
+        return self._final_city
+    @final_city.setter
+    def final_city(self, value):
+        self._final_city = value
 
     def is_valid_next_city(self, city_name):
         if self.current_city is None:
@@ -53,13 +62,18 @@ class FirstSearchMode(Mode):
 
     def on_mouse_click(self):
         # is first city?
-        if self.current_city is None:
+        if self.current_city is None or self.final_city is None:
             selected_city = self.map.on_mouse_click("ClickableCity")
             if selected_city is None:
                 return
-            self.current_city = str(selected_city).split("-")[1]
-            self.notify.debug(f"Starting city set to {self.current_city}")
-            self.map.select_city(self.current_city)
+            if self.current_city is None:
+                self.current_city = str(selected_city).split("-")[1]
+                self.notify.debug(f"Starting city set to {self.current_city}")
+                self.map.select_city(self.current_city)
+            elif self.final_city is None:
+                self.final_city = str(selected_city).split("-")[1]
+                self.map.get_city(self.final_city).last_city = True
+                self.notify.debug(f"Final city set to {self.final_city}")
             return
         # check if stop clicked
         obj = self.map.on_mouse_click("Stop")

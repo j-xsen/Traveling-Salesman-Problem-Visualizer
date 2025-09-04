@@ -23,8 +23,9 @@ class City(NodePath):
             self.title_node_path.setScale(5)
             self.title_node_path.setPos(0, 0, 2)
             self.title_node_path.setBillboardPointEye()
-        self.selected = False
-        self.first_city = False
+        self._last_city = False
+        self._selected = False
+        self._first_city = False
 
     def set_circuit_complete(self):
         if self.rendering:
@@ -57,7 +58,7 @@ class City(NodePath):
             pass
         self._selected = value
         if self.rendering:
-            if self.first_city:
+            if self.first_city or self.last_city:
                 self.model.setColor(Colors.FIRST_SELECTED)
             else:
                 self.model.setColor(Colors.SELECTED if value else Colors.UNSELECTED)
@@ -74,6 +75,15 @@ class City(NodePath):
                 self.model.setColor(Colors.FIRST_SELECTED)
             else:
                 self.model.setColor(Colors.SELECTED if self.selected else Colors.UNSELECTED)
+
+    @property
+    def last_city(self):
+        return getattr(self, "_last_city", False)
+    @last_city.setter
+    def last_city(self, value):
+        self._last_city = value
+        if self.rendering:
+            self.model.setColor(Colors.FIRST_SELECTED)
 
     @property
     def name(self):

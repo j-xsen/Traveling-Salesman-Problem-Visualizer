@@ -3,7 +3,7 @@ from panda3d.core import NodePath, CollisionHandlerQueue, CollisionTraverser, Co
     TextNode
 
 from src.TSP import scale
-from src.Bus import Bus
+from src.bus.Bus import Bus
 from src.City import City
 from src.PositionSlider import PositionSlider
 
@@ -54,6 +54,9 @@ class Map(NodePath):
         self.cities = []
         if self.tsp is not None:
             self.create_cities(self.tsp.coords)
+
+    def get_city(self, city_id):
+        return self.cities[int(city_id) - 1]
 
     def setX(self, x):
         self.setPos(x, self.getY(), self.getZ())

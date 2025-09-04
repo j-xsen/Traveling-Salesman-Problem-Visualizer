@@ -23,8 +23,8 @@ class BruteForceMode(Mode):
         self.ui.append(reset_button)
 
     def activate(self, _map):
-        Mode.activate(self, _map)
         self.map.bus.making_stops = True
+        Mode.activate(self, _map)
 
     def on_mouse_click(self):
         # accept mouse
