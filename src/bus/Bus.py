@@ -24,6 +24,11 @@ class Bus(NodePath):
         self.stop_nodes = NodePath("Stops")
         self.stop_nodes.reparentTo(self)
 
+    def complete_route(self):
+        for child in self.stop_nodes.getChildren():
+            child.selected = False
+            child.route_complete = True
+
     # Brute force
     def add_stop(self, to_city_coords):
         if self.making_stops:

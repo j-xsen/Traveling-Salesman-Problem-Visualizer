@@ -17,6 +17,7 @@ class Stop(NodePath):
         self.to_city = to_city
 
         self._selected = selected
+        self._route_complete = False
 
         # # ARROW BODY
         self.model = loader.loadModel("arrow_body.bam")
@@ -63,3 +64,13 @@ class Stop(NodePath):
         self._selected = value
         for children in self.getChildren():
             children.setColor(Colors.SELECTED if value else Colors.WHITE)
+
+    @property
+    def route_complete(self):
+        return self._route_complete
+    @route_complete.setter
+    def route_complete(self, value):
+        self._route_complete = value
+        if value:
+            for children in self.getChildren():
+                children.setColor(Colors.CIRCUIT_COMPLETE)

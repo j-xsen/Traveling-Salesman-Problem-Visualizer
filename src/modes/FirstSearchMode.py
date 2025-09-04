@@ -1,4 +1,6 @@
 from direct.gui.DirectButton import DirectButton
+from direct.gui.OnscreenText import OnscreenText
+from panda3d.core import TextNode
 
 from src.bus.Bus import Stop
 from src.modes.Mode import Mode, ProblemType
@@ -9,6 +11,7 @@ class FirstSearchMode(Mode):
         super().__init__(ProblemType.FIRST_SEARCH, '11PointDFSBFS.tsp')
         self.map = _map
         self.stops = {}
+        self.route_complete = False
         self._current_city = None
         self._final_city = None
 
@@ -17,8 +20,9 @@ class FirstSearchMode(Mode):
         self.map.bus.making_stops = False
 
     def reset(self):
-        self._current_city = None
-        self._final_city = None
+        self.current_city = None
+        self.final_city = None
+        self.route_complete = False
         for stop in self.stops.values():
             stop.selected = False
         self.map.reset()
@@ -28,14 +32,34 @@ class FirstSearchMode(Mode):
         return self._current_city
     @current_city.setter
     def current_city(self, value):
+        # check if resetting
+        if value is None:
+            self.ui[1].setText(f"Starting City: None")
+            self._current_city = None
+            return
+        # check if the route is started
         if self._current_city is not None:
+            # route started; check if valid next city
             self.notify.debug("Checking if next city is valid")
             if not self.is_valid_next_city(value):
                 self.notify.warning(f"City {value} is not a valid next city from {self.current_city}")
                 return
         else:
             self.notify.debug("Setting starting city")
+            self.ui[1].setText(f"Starting City: {value}")
+        # set city
         self._current_city = value
+        # check if final city reached
+        if self.final_city is not None and int(self.final_city) == self.current_city:
+            self.notify.debug(f"Final city {self.final_city} reached!")
+            self.complete_route()
+        self.notify.debug(f"Current city set to {self.current_city}")
+
+    def complete_route(self):
+        self.route_complete = True
+        for stop in self.stops.values():
+            stop.route_complete = True
+        self.map.complete_route()
 
     @property
     def final_city(self):
@@ -43,6 +67,7 @@ class FirstSearchMode(Mode):
     @final_city.setter
     def final_city(self, value):
         self._final_city = value
+        self.ui[2].setText(f"Final City: {self.final_city if self.final_city else 'None'}")
 
     def is_valid_next_city(self, city_name):
         if self.current_city is None:
@@ -103,10 +128,24 @@ class FirstSearchMode(Mode):
             self.notify.warning(f"Clicked stop not found in stops: {stop_name}")
 
     def build_ui(self):
+        # reset button
         reset_button = DirectButton(text="Reset", scale=0.07,
                                     pos=(1, 0, -0.8),
                                     command=self.reset)
         self.ui.append(reset_button)
+
+        # starting city text
+        starting_city_text = OnscreenText(text=f"Starting City: {self.current_city if self.current_city else 'None'}",
+                                          fg=(1, 1, 1, 1),align=TextNode.ALeft,scale=0.07,pos=(-1.3,0.65),
+                                          mayChange=True,)
+
+        self.ui.append(starting_city_text)
+
+        # final city text
+        final_city_text_node = OnscreenText(text=f"Final City: {self.final_city if self.final_city else 'None'}",
+                                            fg=(1, 1, 1, 1), align=TextNode.ALeft, scale=0.07, pos=(-1.3, 0.55),
+                                            mayChange=True, )
+        self.ui.append(final_city_text_node)
 
     def load_problem(self, _map, file, src=""):
         super().load_problem(_map, file, src)

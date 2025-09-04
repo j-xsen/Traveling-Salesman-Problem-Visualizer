@@ -113,6 +113,12 @@ class Map(NodePath):
         if self.tsp is not None:
             self.create_cities(self.tsp.coords)
 
+    def complete_route(self):
+        self.notify.debug("Route complete")
+        self.route_complete = True
+        for city in self.cities:
+            city.set_circuit_complete()
+
     def select_city(self, city_id):
         is_selected = self.cities[int(city_id) - 1].selected
         is_first_city = (len(self.route) == 0) or self.cities[int(city_id) - 1].first_city
@@ -129,10 +135,7 @@ class Map(NodePath):
 
         # check if loop
         if is_selected and is_first_city:
-            self.notify.debug("Route complete")
-            self.route_complete = True
-            for city in self.cities:
-                city.set_circuit_complete()
+            self.complete_route()
             return
 
         self.cities[int(city_id) - 1].selected = True
