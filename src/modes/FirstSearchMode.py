@@ -1,4 +1,5 @@
 from collections import deque
+from queue import LifoQueue
 
 from direct.gui.DirectButton import DirectButton
 from direct.gui.DirectRadioButton import DirectRadioButton
@@ -19,11 +20,22 @@ class FirstSearchMode(Mode):
         self._final_city = None
         self._first_city = None
 
-        self.search_type = "BFS"
+        self._search_type = "BFS"
 
         # search algorithm stuff
         self.searched_nodes = {}
         self.queue = deque()
+
+    @property
+    def search_type(self):
+        return self._search_type
+    @search_type.setter
+    def search_type(self, value):
+        if value in ["BFS", "DFS"]:
+            self._search_type = value
+            self.notify.debug(f"Search type set to {self._search_type}")
+        else:
+            self.notify.warning(f"Invalid search type: {value}")
 
     def find_stop_from_cities(self, from_city, to_city):
         for stop in self.stops.values():
@@ -31,46 +43,80 @@ class FirstSearchMode(Mode):
                 return stop
         return None
 
+    def build_route_from_list(self, qd_city, parent_list):
+        # build route
+        route_list = []
+        parent_loop = qd_city
+        while parent_loop is not None:
+            route_list.append(parent_loop)
+            if parent_loop not in parent_list:
+                self.notify.warning(f"Parent loop {parent_loop} not in parent list")
+                break
+            parent_loop = parent_list[parent_loop]
+        route_list.reverse()
+        # self.current_city = route_list[0]
+        for i in range(1, len(route_list)):
+            from_city = route_list[i - 1]
+            to_city = route_list[i]
+            stop = self.find_stop_from_cities(from_city, to_city)
+            if stop is not None:
+                self.select_stop(stop.name)
+        self.complete_route()
+
     def generate_routes(self):
-        self.notify.debug("Generating routes using BFS")
+        if self.search_type == "BFS":
+            self.queue = deque()
+            self.notify.debug("Generating routes using BFS")
 
-        # clear data
-        self.searched_nodes.clear()
-        self.queue.clear()
+            # clear data
+            self.searched_nodes.clear()
 
-        # initial values
-        self.searched_nodes[int(self.first_city)] = None
-        self.queue.append(int(self.first_city))
-        while self.queue:
-            self.notify.debug(f"Begin Queue Loop: {self.queue}")
-            qd_city = self.queue.popleft()
+            # initial values
+            self.searched_nodes[int(self.first_city)] = None
+            self.queue.append(int(self.first_city))
+            while self.queue:
+                self.notify.debug(f"Begin Queue Loop: {self.queue}")
+                qd_city = self.queue.popleft()
 
-            # success case
-            if self.final_city is not None and qd_city == int(self.final_city):
-                # build route
-                route_list = []
-                parent_loop = qd_city
-                while parent_loop is not None:
-                    route_list.append(parent_loop)
-                    parent_loop = self.searched_nodes[parent_loop]
-                route_list.reverse()
-                self.current_city = route_list[0]
-                self.notify.debug(f"Route found: {route_list}")
-                # select stops from route
-                for i in range(1, len(route_list)):
-                    from_city = route_list[i-1]
-                    to_city = route_list[i]
-                    stop = self.find_stop_from_cities(from_city, to_city)
-                    if stop is not None:
-                        self.select_stop(stop.name)
-                self.complete_route()
-                return
+                # success case
+                if self.final_city is not None and qd_city == int(self.final_city):
+                    self.build_route_from_list(qd_city, self.searched_nodes)
+                    return
 
-            # add valid next cities to queue
-            for city in self.list_valid_next_cities_of(qd_city):
-                if city not in self.searched_nodes:
-                    self.searched_nodes[city] = int(qd_city)
-                    self.queue.append(city)
+                # add valid next cities to queue
+                for city in self.list_valid_next_cities_of(qd_city):
+                    if city not in self.searched_nodes:
+                        self.searched_nodes[city] = int(qd_city)
+                        self.queue.append(city)
+        else:
+            self.notify.debug("Generating routes using DFS")
+
+            self.queue = LifoQueue()
+
+            # clear data
+            self.searched_nodes.clear()
+            parents = {}
+
+            # initial values
+            self.queue.put(int(self.first_city))
+            while not self.queue.empty():
+                qd_city = self.queue.get()
+                self.notify.debug(f"Begin Stack Loop: {qd_city}")
+
+                # success case
+                if self.final_city is not None and qd_city == int(self.final_city):
+                    self.build_route_from_list(qd_city, parents)
+                    return
+
+                if qd_city not in self.searched_nodes:
+                    self.notify.debug(f"Visiting city {qd_city}")
+                    self.searched_nodes[qd_city] = True
+                    for city in self.list_valid_next_cities_of(qd_city):
+                        self.notify.debug(f"Checking city {city}")
+                        if city not in self.searched_nodes:
+                            parents[city] = qd_city
+                            self.queue.put(city)
+            self.notify.debug("No route found")
 
     def activate(self, _map):
         super().activate(_map)
@@ -254,12 +300,21 @@ class FirstSearchMode(Mode):
 
         # radio button group for search type
         buttons=[DirectRadioButton(text="BFS", scale=0.07, pos=(-1.1, 0, -0.8),
-                                             variable=[self.search_type], value=["BFS"],),
+                                             variable=[self.search_type], value=["BFS"],
+                                   command=self.set_search_type, extraArgs=["BFS"]),
         DirectRadioButton(text="DFS", scale=0.07, pos=(-.8, 0, -0.8),
-                                      variable=[self.search_type], value=["DFS"], )]
+                                      variable=[self.search_type], value=["DFS"],
+                          command=self.set_search_type, extraArgs=["DFS"])]
         for button in buttons:
             button.setOthers(buttons)
             self.ui.append(button)
+
+    def set_search_type(self, search_type):
+        if search_type in ["BFS", "DFS"]:
+            self.search_type = search_type
+            self.notify.debug(f"Search type set to {self.search_type}")
+        else:
+            self.notify.warning(f"Invalid search type: {search_type}")
 
     def load_problem(self, _map, file, src=""):
         super().load_problem(_map, file, src)
