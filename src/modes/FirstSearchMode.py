@@ -22,24 +22,52 @@ class FirstSearchMode(Mode):
         self.searched_nodes = {}
         self.queue = deque()
 
+    def find_stop_from_cities(self, from_city, to_city):
+        for stop in self.stops.values():
+            if int(stop.from_city.name) == int(from_city) and int(stop.to_city.name) == int(to_city):
+                return stop
+        return None
+
     def generate_routes(self):
         self.notify.debug("Generating routes using BFS")
-        self.queue.append(self.first_city)
+
+        # clear data
+        self.searched_nodes.clear()
+        self.queue.clear()
+
+        # initial values
+        self.searched_nodes[int(self.first_city)] = None
+        self.queue.append(int(self.first_city))
         while self.queue:
-            city = self.queue.popleft()
-            if city in self.searched_nodes:
-                continue
-            self.notify.debug(f"Exploring city {city}")
-            self.searched_nodes[city] = True
-            for stop in self.stops.values():
-                if str(stop.from_city.name) == str(city):
-                    self.notify.debug(f"Adding stop to city {stop.to_city.name} to queue")
-                    stop.selected = True
-                    if self.final_city is not None and int(stop.to_city.name) == int(self.final_city):
-                        self.notify.debug(f"Reached final city {self.final_city} via stop {stop}")
-                        self.complete_route()
-                        return
-                    self.queue.append(str(stop.to_city.name))
+            self.notify.debug(f"Begin Queue Loop: {self.queue}")
+            qd_city = self.queue.popleft()
+
+            # success case
+            if self.final_city is not None and qd_city == int(self.final_city):
+                # build route
+                route_list = []
+                parent_loop = qd_city
+                while parent_loop is not None:
+                    route_list.append(parent_loop)
+                    parent_loop = self.searched_nodes[parent_loop]
+                route_list.reverse()
+                self.current_city = route_list[0]
+                self.notify.debug(f"Route found: {route_list}")
+                # select stops from route
+                for i in range(1, len(route_list)):
+                    from_city = route_list[i-1]
+                    to_city = route_list[i]
+                    stop = self.find_stop_from_cities(from_city, to_city)
+                    if stop is not None:
+                        self.select_stop(stop.name)
+                self.complete_route()
+                return
+
+            # add valid next cities to queue
+            for city in self.list_valid_next_cities_of(qd_city):
+                if city not in self.searched_nodes:
+                    self.searched_nodes[city] = int(qd_city)
+                    self.queue.append(city)
 
     def activate(self, _map):
         super().activate(_map)
@@ -113,19 +141,22 @@ class FirstSearchMode(Mode):
         self.ui[1]['state'] = "normal"
 
     def list_valid_next_cities(self):
+        return self.list_valid_next_cities_of(int(self.current_city))
+
+    def list_valid_next_cities_of(self, city_name):
         valid_cities = []
-        if self.current_city is None:
+        if city_name is None:
             return valid_cities
         for stop in self.stops.values():
-            if int(stop.from_city.name) == int(self.current_city):
-                valid_cities.append(stop.to_city.name)
+            if int(stop.from_city.name) == int(city_name):
+                valid_cities.append(int(stop.to_city.name))
         return valid_cities
 
     def is_valid_next_city(self, city_name):
         if self.current_city is None:
             self.notify.debug("No current city, any city is valid")
             return True
-        return city_name in self.list_valid_next_cities()
+        return int(city_name) in self.list_valid_next_cities()
 
     def deactivate(self):
         Mode.deactivate(self)
@@ -139,7 +170,7 @@ class FirstSearchMode(Mode):
         # ensure proper from
         if int(self.stops[stop_name].from_city.name) != int(self.current_city):
             self.notify.warning(
-                f"Stop {self.stops[stop_name].from_city.name} is not a valid stop from current city {self.current_city}")
+                f"{stop_name} from {self.stops[stop_name].from_city.name} to {self.stops[stop_name].to_city.name} is not a valid stop from current city {self.current_city}")
             return
         # ensure proper to
         if not self.is_valid_next_city(self.stops[stop_name].to_city.name):
