@@ -1,6 +1,7 @@
 from collections import deque
 
 from direct.gui.DirectButton import DirectButton
+from direct.gui.DirectRadioButton import DirectRadioButton
 from direct.gui.OnscreenText import OnscreenText
 from panda3d.core import TextNode
 
@@ -17,6 +18,8 @@ class FirstSearchMode(Mode):
         self._current_city = None
         self._final_city = None
         self._first_city = None
+
+        self.search_type = "BFS"
 
         # search algorithm stuff
         self.searched_nodes = {}
@@ -236,7 +239,6 @@ class FirstSearchMode(Mode):
                                               command=self.generate_routes)
         self.ui.append(generate_routes_button)
 
-
         # starting city text
         starting_city_text = OnscreenText(text=f"Starting City: {self.current_city if self.current_city else 'None'}",
                                           fg=(1, 1, 1, 1),align=TextNode.ALeft,scale=0.07,pos=(-1.3,0.65),
@@ -249,6 +251,15 @@ class FirstSearchMode(Mode):
                                             fg=(1, 1, 1, 1), align=TextNode.ALeft, scale=0.07, pos=(-1.3, 0.55),
                                             mayChange=True, )
         self.ui.append(final_city_text_node)
+
+        # radio button group for search type
+        buttons=[DirectRadioButton(text="BFS", scale=0.07, pos=(-1.1, 0, -0.8),
+                                             variable=[self.search_type], value=["BFS"],),
+        DirectRadioButton(text="DFS", scale=0.07, pos=(-.8, 0, -0.8),
+                                      variable=[self.search_type], value=["DFS"], )]
+        for button in buttons:
+            button.setOthers(buttons)
+            self.ui.append(button)
 
     def load_problem(self, _map, file, src=""):
         super().load_problem(_map, file, src)
