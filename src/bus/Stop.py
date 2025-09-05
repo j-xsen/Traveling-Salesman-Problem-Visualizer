@@ -73,4 +73,5 @@ class Stop(NodePath):
         self._route_complete = value
         if value:
             for children in self.getChildren():
-                children.setColor(Colors.CIRCUIT_COMPLETE)
+                if children.getColor() != Colors.SELECTED:
+                    children.setColor(Colors.CIRCUIT_COMPLETE)

@@ -1,3 +1,5 @@
+from collections import deque
+
 from direct.gui.DirectButton import DirectButton
 from direct.gui.OnscreenText import OnscreenText
 from panda3d.core import TextNode
@@ -14,6 +16,30 @@ class FirstSearchMode(Mode):
         self.route_complete = False
         self._current_city = None
         self._final_city = None
+        self._first_city = None
+
+        # search algorithm stuff
+        self.searched_nodes = {}
+        self.queue = deque()
+
+    def generate_routes(self):
+        self.notify.debug("Generating routes using BFS")
+        self.queue.append(self.first_city)
+        while self.queue:
+            city = self.queue.popleft()
+            if city in self.searched_nodes:
+                continue
+            self.notify.debug(f"Exploring city {city}")
+            self.searched_nodes[city] = True
+            for stop in self.stops.values():
+                if str(stop.from_city.name) == str(city):
+                    self.notify.debug(f"Adding stop to city {stop.to_city.name} to queue")
+                    stop.selected = True
+                    if self.final_city is not None and int(stop.to_city.name) == int(self.final_city):
+                        self.notify.debug(f"Reached final city {self.final_city} via stop {stop}")
+                        self.complete_route()
+                        return
+                    self.queue.append(str(stop.to_city.name))
 
     def activate(self, _map):
         super().activate(_map)
@@ -22,10 +48,21 @@ class FirstSearchMode(Mode):
     def reset(self):
         self.current_city = None
         self.final_city = None
+        self.first_city = None
         self.route_complete = False
+        self.searched_nodes = {}
         for stop in self.stops.values():
             stop.selected = False
+            stop.route_complete = False
         self.map.reset()
+
+    @property
+    def first_city(self):
+        return self._first_city
+    @first_city.setter
+    def first_city(self, value):
+        self.notify.debug(f"Setting first city to {value}")
+        self._first_city = value
 
     @property
     def current_city(self):
@@ -34,8 +71,9 @@ class FirstSearchMode(Mode):
     def current_city(self, value):
         # check if resetting
         if value is None:
-            self.ui[1].setText(f"Starting City: None")
+            self.ui[2].setText(f"Starting City: None")
             self._current_city = None
+            self.first_city = None
             return
         # check if the route is started
         if self._current_city is not None:
@@ -46,14 +84,15 @@ class FirstSearchMode(Mode):
                 return
         else:
             self.notify.debug("Setting starting city")
-            self.ui[1].setText(f"Starting City: {value}")
+            self.ui[2].setText(f"Starting City: {value}")
+            self.first_city = value
         # set city
         self._current_city = value
+        self.notify.debug(f"Current city set to {self.current_city}")
         # check if final city reached
         if self.final_city is not None and int(self.final_city) == self.current_city:
             self.notify.debug(f"Final city {self.final_city} reached!")
             self.complete_route()
-        self.notify.debug(f"Current city set to {self.current_city}")
 
     def complete_route(self):
         self.route_complete = True
@@ -66,51 +105,41 @@ class FirstSearchMode(Mode):
         return self._final_city
     @final_city.setter
     def final_city(self, value):
+        if value is not None and value == self.current_city:
+            self.notify.warning("Final city cannot be the same as starting city")
+            return
         self._final_city = value
-        self.ui[2].setText(f"Final City: {self.final_city if self.final_city else 'None'}")
+        self.ui[3].setText(f"Final City: {self.final_city if self.final_city else 'None'}")
+        self.ui[1]['state'] = "normal"
+
+    def list_valid_next_cities(self):
+        valid_cities = []
+        if self.current_city is None:
+            return valid_cities
+        for stop in self.stops.values():
+            if int(stop.from_city.name) == int(self.current_city):
+                valid_cities.append(stop.to_city.name)
+        return valid_cities
 
     def is_valid_next_city(self, city_name):
         if self.current_city is None:
             self.notify.debug("No current city, any city is valid")
             return True
-        for stop in self.stops.values():
-            if int(stop.from_city.name) == int(self.current_city):
-                if stop.to_city.name == city_name:
-                    self.notify.debug(f"Valid next city found {city_name}")
-                    return True
-        return False
+        return city_name in self.list_valid_next_cities()
 
     def deactivate(self):
         Mode.deactivate(self)
         self.stops = {}
         self._current_city = None
+        self._final_city = None
+        self.route_complete = False
 
-    def on_mouse_click(self):
-        # is first city?
-        if self.current_city is None or self.final_city is None:
-            selected_city = self.map.on_mouse_click("ClickableCity")
-            if selected_city is None:
-                return
-            if self.current_city is None:
-                self.current_city = str(selected_city).split("-")[1]
-                self.notify.debug(f"Starting city set to {self.current_city}")
-                self.map.select_city(self.current_city)
-            elif self.final_city is None:
-                self.final_city = str(selected_city).split("-")[1]
-                self.map.get_city(self.final_city).last_city = True
-                self.notify.debug(f"Final city set to {self.final_city}")
-            return
-        # check if stop clicked
-        obj = self.map.on_mouse_click("Stop")
-        if obj is None:
-            return
-        stop_name = str(obj).split('/')[-1]
-        self.notify.debug(f"Clicked on stop {stop_name}")
-
+    def select_stop(self, stop_name):
         # check if from valid
         # ensure proper from
         if int(self.stops[stop_name].from_city.name) != int(self.current_city):
-            self.notify.warning(f"Stop {self.stops[stop_name].from_city.name} is not a valid stop from current city {self.current_city}")
+            self.notify.warning(
+                f"Stop {self.stops[stop_name].from_city.name} is not a valid stop from current city {self.current_city}")
             return
         # ensure proper to
         if not self.is_valid_next_city(self.stops[stop_name].to_city.name):
@@ -119,7 +148,6 @@ class FirstSearchMode(Mode):
         # select stop
         self.map.select_city(self.stops[stop_name].to_city.name)
         self.current_city = self.stops[stop_name].to_city.name
-        self.notify.debug(f"Current city updated to {self.current_city}")
 
         if stop_name in self.stops:
             selected_stop = self.stops[stop_name]
@@ -127,12 +155,56 @@ class FirstSearchMode(Mode):
         else:
             self.notify.warning(f"Clicked stop not found in stops: {stop_name}")
 
+    def on_mouse_click(self):
+        if not self.route_complete:
+            # is first city?
+            if self.current_city is None or self.final_city is None:
+                selected_city = self.map.on_mouse_click("ClickableCity")
+                if selected_city is None:
+                    return
+                if self.current_city is None:
+                    self.current_city = str(selected_city).split("-")[1]
+                    self.notify.debug(f"Starting city set to {self.current_city}")
+                    self.map.select_city(self.current_city)
+                elif self.final_city is None:
+                    city_id = str(selected_city).split("-")[1]
+                    if city_id and str(city_id) != str(self.current_city):
+                        self.final_city = city_id
+                        if self.final_city:
+                            self.map.get_city(self.final_city).last_city = True
+                            self.notify.debug(f"Final city set to {self.final_city}")
+                    else:
+                        self.notify.warning("Final city selection failed")
+                return
+            # check if stop clicked
+            obj = self.map.on_mouse_click("Stop")
+            if obj is None:
+                return
+            stop_name = str(obj).split('/')[-1]
+            self.notify.debug(f"Clicked on stop {stop_name}")
+
+            self.select_stop(stop_name)
+
     def build_ui(self):
         # reset button
         reset_button = DirectButton(text="Reset", scale=0.07,
                                     pos=(1, 0, -0.8),
                                     command=self.reset)
         self.ui.append(reset_button)
+
+        # generate routes button (disabled)
+        generate_routes_button = DirectButton(text="Generate Routes", scale=0.07,
+                                              pos=(1, 0, -0.9),
+                                              state="disabled",
+                                              frameColor=(
+                                                  (0.8, 0.8, 0.8, 1),  # Normal
+                                                  (0.9, 0.9, 0.9, 1),  # Click
+                                                  (0.7, 0.7, 0.7, 1),  # Hover
+                                                  (0.5, 0.5, 0.5, 1)  # Disabled
+                                              ),
+                                              command=self.generate_routes)
+        self.ui.append(generate_routes_button)
+
 
         # starting city text
         starting_city_text = OnscreenText(text=f"Starting City: {self.current_city if self.current_city else 'None'}",
