@@ -4,6 +4,7 @@ __pycache__/**
 .venv/**
 *.pdf
 *.docx
+build/**
 
 # oversized result files
 results/concorde10.txt
