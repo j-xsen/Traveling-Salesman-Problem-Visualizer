@@ -46,7 +46,7 @@ class Map(NodePath):
         distance_slider_node = PositionSlider(range=(700, 100), position=1, command=self.setY, default=500)
 
         ## vertical slider node
-        default = (200 - (scale * 100))
+        default = 100 - (scale * 100)
         v_slider_node = PositionSlider(range=(default - (scale * 75), default + (scale * 75)), default=default,
                                        position=2, command=self.setZ)
 

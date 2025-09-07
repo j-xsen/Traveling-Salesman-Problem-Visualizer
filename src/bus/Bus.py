@@ -46,6 +46,10 @@ class Bus(NodePath):
             self.stop_nodes = NodePath("Stops")
             self.stop_nodes.reparentTo(self)
 
+    def reset_to(self, to_city_coords):
+        self.current_coords = to_city_coords
+        self.distance_traveled = 0
+
     @property
     def distance_traveled(self):
         return self._distance_traveled

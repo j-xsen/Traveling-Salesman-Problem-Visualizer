@@ -45,6 +45,8 @@ class FirstSearchMode(Mode):
 
     def build_route_from_list(self, qd_city, parent_list):
         # build route
+        self.notify.debug("Setting current city to first city")
+        self._current_city=self.first_city
         route_list = []
         parent_loop = qd_city
         while parent_loop is not None:
@@ -64,6 +66,11 @@ class FirstSearchMode(Mode):
         self.complete_route()
 
     def generate_routes(self):
+        self.current_city = self.first_city
+        self.map.reset()
+        for stop in self.stops.values():
+            stop.selected = False
+            stop.route_complete = False
         if self.search_type == "BFS":
             self.queue = deque()
             self.notify.debug("Generating routes using BFS")
@@ -120,6 +127,7 @@ class FirstSearchMode(Mode):
 
     def activate(self, _map):
         super().activate(_map)
+        self.disable_generate_routes_button()
         self.map.bus.making_stops = False
 
     def reset(self):
@@ -150,7 +158,6 @@ class FirstSearchMode(Mode):
         if value is None:
             self.ui[2].setText(f"Starting City: None")
             self._current_city = None
-            self.first_city = None
             return
         # check if the route is started
         if self._current_city is not None:
@@ -171,8 +178,15 @@ class FirstSearchMode(Mode):
             self.notify.debug(f"Final city {self.final_city} reached!")
             self.complete_route()
 
+    def disable_generate_routes_button(self):
+        self.ui[1]['state'] = "disabled"
+
+    def enable_generate_routes_button(self):
+        self.ui[1]['state'] = "normal"
+
     def complete_route(self):
         self.route_complete = True
+        self.disable_generate_routes_button()
         for stop in self.stops.values():
             stop.route_complete = True
         self.map.complete_route()
@@ -187,7 +201,7 @@ class FirstSearchMode(Mode):
             return
         self._final_city = value
         self.ui[3].setText(f"Final City: {self.final_city if self.final_city else 'None'}")
-        self.ui[1]['state'] = "normal"
+        self.enable_generate_routes_button()
 
     def list_valid_next_cities(self):
         return self.list_valid_next_cities_of(int(self.current_city))
@@ -312,6 +326,8 @@ class FirstSearchMode(Mode):
     def set_search_type(self, search_type):
         if search_type in ["BFS", "DFS"]:
             self.search_type = search_type
+            if self.final_city is not None:
+                self.enable_generate_routes_button()
             self.notify.debug(f"Search type set to {self.search_type}")
         else:
             self.notify.warning(f"Invalid search type: {search_type}")
