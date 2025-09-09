@@ -1,3 +1,5 @@
+import os
+import time
 from collections import deque
 from queue import LifoQueue
 
@@ -65,65 +67,78 @@ class FirstSearchMode(Mode):
                 self.select_stop(stop.name)
         self.complete_route()
 
+    def do_breadth_first_search(self):
+        self.queue = deque()
+        self.notify.debug("Generating routes using BFS")
+
+        # clear data
+        self.searched_nodes.clear()
+
+        # initial values
+        self.searched_nodes[int(self.first_city)] = None
+        self.queue.append(int(self.first_city))
+        while self.queue:
+            self.notify.debug(f"Begin Queue Loop: {self.queue}")
+            qd_city = self.queue.popleft()
+
+            # success case
+            if self.final_city is not None and qd_city == int(self.final_city):
+                self.build_route_from_list(qd_city, self.searched_nodes)
+                return
+
+            # add valid next cities to queue
+            for city in self.list_valid_next_cities_of(qd_city):
+                if city not in self.searched_nodes:
+                    self.searched_nodes[city] = int(qd_city)
+                    self.queue.append(city)
+
+    def do_depth_first_search(self):
+        self.notify.debug("Generating routes using DFS")
+
+        self.queue = LifoQueue()
+
+        # clear data
+        self.searched_nodes.clear()
+        parents = {}
+
+        # initial values
+        self.queue.put(int(self.first_city))
+        while not self.queue.empty():
+            qd_city = self.queue.get()
+            self.notify.debug(f"Begin Stack Loop: {qd_city}")
+
+            # success case
+            if self.final_city is not None and qd_city == int(self.final_city):
+                self.build_route_from_list(qd_city, parents)
+                return
+
+            if qd_city not in self.searched_nodes:
+                self.notify.debug(f"Visiting city {qd_city}")
+                self.searched_nodes[qd_city] = True
+                for city in self.list_valid_next_cities_of(qd_city):
+                    self.notify.debug(f"Checking city {city}")
+                    if city not in self.searched_nodes:
+                        parents[city] = qd_city
+                        self.queue.put(city)
+        self.notify.debug("No route found")
+
     def generate_routes(self):
         self.current_city = self.first_city
         self.map.reset()
         for stop in self.stops.values():
             stop.selected = False
             stop.route_complete = False
+        start_time = time.perf_counter()
         if self.search_type == "BFS":
-            self.queue = deque()
-            self.notify.debug("Generating routes using BFS")
-
-            # clear data
-            self.searched_nodes.clear()
-
-            # initial values
-            self.searched_nodes[int(self.first_city)] = None
-            self.queue.append(int(self.first_city))
-            while self.queue:
-                self.notify.debug(f"Begin Queue Loop: {self.queue}")
-                qd_city = self.queue.popleft()
-
-                # success case
-                if self.final_city is not None and qd_city == int(self.final_city):
-                    self.build_route_from_list(qd_city, self.searched_nodes)
-                    return
-
-                # add valid next cities to queue
-                for city in self.list_valid_next_cities_of(qd_city):
-                    if city not in self.searched_nodes:
-                        self.searched_nodes[city] = int(qd_city)
-                        self.queue.append(city)
+            self.do_breadth_first_search()
         else:
-            self.notify.debug("Generating routes using DFS")
-
-            self.queue = LifoQueue()
-
-            # clear data
-            self.searched_nodes.clear()
-            parents = {}
-
-            # initial values
-            self.queue.put(int(self.first_city))
-            while not self.queue.empty():
-                qd_city = self.queue.get()
-                self.notify.debug(f"Begin Stack Loop: {qd_city}")
-
-                # success case
-                if self.final_city is not None and qd_city == int(self.final_city):
-                    self.build_route_from_list(qd_city, parents)
-                    return
-
-                if qd_city not in self.searched_nodes:
-                    self.notify.debug(f"Visiting city {qd_city}")
-                    self.searched_nodes[qd_city] = True
-                    for city in self.list_valid_next_cities_of(qd_city):
-                        self.notify.debug(f"Checking city {city}")
-                        if city not in self.searched_nodes:
-                            parents[city] = qd_city
-                            self.queue.put(city)
-            self.notify.debug("No route found")
+            self.do_depth_first_search()
+        elapsed_time = time.perf_counter() - start_time
+        self.notify.debug(f"Time elapsed: {elapsed_time}")
+        with open(f"results/{self.search_type}_time.txt", "w") as f:
+            f.write(str(elapsed_time))
+            f.flush()
+            os.fsync(f.fileno())
 
     def activate(self, _map):
         super().activate(_map)
