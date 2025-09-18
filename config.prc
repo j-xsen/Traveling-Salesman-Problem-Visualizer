@@ -1,2 +1,2 @@
 window-title Traveling Salesman Problem
-default-directnotify-level warning
+default-directnotify-level debug

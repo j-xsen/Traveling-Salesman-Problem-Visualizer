@@ -7,6 +7,7 @@ from panda3d.core import loadPrcFile, VirtualFileSystem, Filename
 
 from src.Map import Map
 from src.modes.BruteForceMode import BruteForceMode
+from src.modes.ClosestEdgeInsertionMode import ClosestEdgeInsertionMode
 from src.modes.FirstSearchMode import FirstSearchMode
 
 loadPrcFile("./config.prc")
@@ -35,14 +36,17 @@ class TravelingSalesmanProblem(ShowBase):
         # modes
         BFMode = BruteForceMode(self.map)
         FSMode = FirstSearchMode(self.map)
-        self._mode = FSMode
+        CEMode = ClosestEdgeInsertionMode(self.map)
+        self._mode = CEMode
 
         # modes radio buttons
         buttons = [
-            DirectRadioButton(text="Brute Force", scale=0.07, pos=(0.9, 0, 0.9), variable=[self.mode], value=[BFMode],
+            DirectRadioButton(text="Brute Force", scale=0.07, pos=(1, 0, 0.9), variable=[self.mode], value=[BFMode],
                               command=self.set_mode, extraArgs=[BFMode]),
-            DirectRadioButton(text="Breadth/Depth First Search", scale=0.07, pos=(0.7, 0, 0.8), variable=[self.mode],
-                              value=[FSMode], command=self.set_mode, extraArgs=[FSMode])
+            DirectRadioButton(text="Breadth/Depth First Search", scale=0.07, pos=(0.8, 0, 0.75), variable=[self.mode],
+                              value=[FSMode], command=self.set_mode, extraArgs=[FSMode]),
+            DirectRadioButton(text="Closest Edge Insertion", scale=0.07, pos=(0.9, 0, 0.6), variable=[self.mode],
+                              value=[CEMode], command=self.set_mode, extraArgs=[CEMode])
         ]
         for button in buttons:
             button.setOthers(buttons)

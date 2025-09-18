@@ -11,6 +11,7 @@ from src.TSP import read_tsp
 class ProblemType(Enum):
     BRUTE_FORCE = "BF"
     FIRST_SEARCH = "FS"
+    CLOSEST_EDGE = "CE"
 
 
 class Mode(DirectObject):
@@ -91,7 +92,7 @@ class Mode(DirectObject):
                 text=file.replace('.tsp', ''),
                 scale=0.07,
                 frameColor=(0.8, 0.8, 0.8, 1),
-                pos=(-1 + col * 0.4, 0, -row * 0.15 - 0.6),
+                pos=(-1 + col * 0.5, 0, -row * 0.15 - 0.6),
                 variable=[self.last_loaded],
                 value=[file],
                 extraArgs=[_map, file, f"drb{file}"]
