@@ -2,6 +2,7 @@ from direct.directnotify.DirectNotifyGlobal import directNotify
 from panda3d.core import NodePath, CollisionHandlerQueue, CollisionTraverser, CollisionNode, CollisionRay, GeomNode, \
     TextNode
 
+from src.Route import Route
 from src.TSP import scale
 from src.bus.Bus import Bus
 from src.City import City
@@ -27,13 +28,8 @@ class Map(NodePath):
         self.c_trav = CollisionTraverser()
         self.c_handler = CollisionHandlerQueue()
 
-        self.route_text = TextNode("route")
-        self.route_text.setText("Route: ")
-        self.route_text.setAlign(TextNode.ALeft)
-        self.route_text_path = aspect2d.attachNewNode(self.route_text)
-        self.route_text_path.setScale(0.07)
-        self.route_text_path.setPos(-1.3, 0, 0.8)
-        self.route = []
+        self._route = Route()
+        self.calc_route_complete = True
         self.route_complete = False
 
         self.bus = Bus()
@@ -84,9 +80,8 @@ class Map(NodePath):
         for city in self.cities:
             city.selected = False
             city.first_city = False
-        self.route = []
+        self.route.clear()
         self.route_complete = False
-        self.route_text.setText("Route: ")
         self.bus.reset()
 
     def memory_reset(self):
@@ -119,6 +114,15 @@ class Map(NodePath):
         for city in self.cities:
             city.set_circuit_complete()
 
+    def unselect_last_city(self):
+        if len(self.route) == 0:
+            return
+        last_city_id = self.route.pop()
+        cur_city_id = self.route[-1]
+        self.bus.remove_stop(f"{cur_city_id}-{last_city_id}")
+        self.bus.reset_to(self.get_city(cur_city_id).coords)
+        self.get_city(last_city_id).selected = False
+
     def select_city(self, city_id):
         is_selected = self.cities[int(city_id) - 1].selected
         is_first_city = (len(self.route) == 0) or self.cities[int(city_id) - 1].first_city
@@ -131,10 +135,9 @@ class Map(NodePath):
                 return
         self.route.append(city_id)
         self.bus.add_stop(self.cities[int(city_id) - 1].coords)
-        self.route_text.setText(f"Route: {', '.join(str(x) for x in self.route)}")
 
         # check if loop
-        if is_selected and is_first_city:
+        if is_selected and is_first_city and self.calc_route_complete:
             self.complete_route()
             return
 
@@ -172,3 +175,10 @@ class Map(NodePath):
         self.memory_reset()
         self._TSP = value
         self.create_cities(value.coords)
+
+    @property
+    def route(self):
+        return self._route
+    @route.setter
+    def route(self, value):
+        self._route = Route(value)

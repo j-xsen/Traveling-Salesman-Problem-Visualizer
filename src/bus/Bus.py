@@ -39,7 +39,7 @@ class Bus(NodePath):
         self.current_coords = to_city_coords
 
     def reset(self):
-        self.current_coords = None
+        self.reset_to(None)
         self.distance_traveled = 0
         if self.making_stops:
             self.stop_nodes.removeNode()
@@ -47,8 +47,20 @@ class Bus(NodePath):
             self.stop_nodes.reparentTo(self)
 
     def reset_to(self, to_city_coords):
+        # remove distance
+        self.notify.debug(f"Resetting bus to {to_city_coords}")
+        dist = self.distance(to_city_coords)
         self.current_coords = to_city_coords
-        self.distance_traveled = 0
+        self.distance_traveled -= dist*2 # remove distance to city and back
+
+    def remove_stop(self, stop_name):
+        self.notify.debug(f"Removing stop {stop_name}")
+        if self.making_stops:
+            stop = self.stop_nodes.find(f"**/{stop_name}")
+            if not stop.isEmpty():
+                stop.removeNode()
+            else:
+                self.notify.warning(f"Stop {stop_name} not found")
 
     @property
     def distance_traveled(self):

@@ -8,7 +8,9 @@ from src.bus.distance import distance
 
 
 class Stop(NodePath):
-    def __init__(self, from_city, to_city, name="", selected=False):
+    def __init__(self, from_city, to_city, name=None, selected=False):
+        if name is None:
+            name = f"{from_city.name}-{to_city.name}"
         NodePath.__init__(self, name)
         self.setTag("Stop", f"{name}")
         self.notify = directNotify.newCategory("Stop")
