@@ -58,6 +58,9 @@ class Stop(NodePath):
         # reparent
         self.model.reparentTo(self)
 
+        # tag
+        self.setPythonTag("stopobj", self)
+
     @property
     def selected(self):
         return self._selected
