@@ -1,23 +1,7 @@
-import math
-
 from direct.gui.DirectButton import DirectButton
 
 from src.modes.Mode import Mode, ProblemType
-from src.bus.distance import distance
-
-
-def point_to_edge_dist(p, a, b):
-    px = p.x
-    py = p.y
-    ax = a.x
-    ay = a.y
-    bx = b.x
-    by = b.y
-    dx, dy = bx - ax, by - ay
-    if dx == dy == 0:
-        return math.hypot(px - ax, py - ay)
-    t = max(0, min(1, ((px - ax) * dx + (py - ay) * dy) / (dx * dx + dy * dy)))
-    return math.hypot(px - (ax + t * dx), py - (ay + t * dy))
+from src.bus.distance import distance, edge_distance
 
 class ClosestEdgeInsertionMode(Mode):
     def __init__(self, _map):
@@ -52,71 +36,66 @@ class ClosestEdgeInsertionMode(Mode):
                 nearest_city = city
         return nearest_city
 
-    def find_nearest_city_to_stop(self, stop):
-        self.notify.debug(f"Finding nearest city to stop {stop.from_city.name}-{stop.to_city.name}...")
-        stop_point_one = stop.from_city
-        stop_point_two = stop.to_city
-        nearest_city = None
-        nearest_distance = float('inf')
-        for city in self.map.cities:
-            if city.name in self.map.route or city.name == stop.from_city.name or city.name == stop.to_city.name or str(city.name) in self.map.route:
-                continue
-            # Calculate distance from city to the line segment defined by stop_point_one and stop_point_two
-            calc_dist = point_to_edge_dist(city.coords, stop_point_one, stop_point_two)
-            if type(calc_dist) is not float:
-                self.notify.error(f"Calculated distance is not a float: {calc_dist}")
-                continue
-            # self.notify.debug(f"Calculated distance: {calc_dist} to city {city.name}")
-            if calc_dist < nearest_distance:
-                nearest_distance = calc_dist
-                nearest_city = city
-        if nearest_city is not None:
-            self.notify.debug(f"Nearest city to stop {stop.from_city.name}-{stop.to_city.name} is {nearest_city.name}"
-                              f" at distance {nearest_distance}")
-        return nearest_city, nearest_distance
-
     def expand_tour(self):
+        # check if complete
+        if self.map.route_complete:
+            self.notify.warning("Route already complete, cannot expand tour")
+            return
         self.notify.debug("Expanding tour...")
+
+        # initialize route if empty
         if len(self.map.route) == 0:
             self.notify.debug("Route empty, selecting city 1 & nearest city")
             # select city 1 to start
-            self.map.select_city("1")
+            self.map.select_city(1)
             # find next closest city
             nearest_city = self.find_nearest_city()
             self.map.select_city(nearest_city.name)
             # loop to beginning
-            self.map.select_city("1")
+            self.map.select_city(1)
             return
-        else:
-            # unselect last city to allow for re-selection
-            self.map.unselect_last_city()
 
-        # loop through every edge in the current route
+        self.notify.debug(f"Current route: {self.map.route}")
+
+        lowest_cost = float('inf')
         nearest_city = None
-        nearest_distance = float('inf')
-        nearest_stop = None
-        for i in range(len(self.map.route)-1):
-            city_a = int(self.map.route[i])
-            city_b = int(self.map.route[(i + 1) % len(self.map.route)])
-            self.notify.debug(f"Checking edge from {city_a} to {city_b}")
-            # get stop
-            stop_path = self.map.bus.stop_nodes.find(f"**/{city_a}-{city_b}")
-            if stop_path.isEmpty():
-                self.notify.error(f"Stop {city_a}-{city_b} not found")
+        stop_number = None
+        for city in self.map.cities:
+            # skip visited
+            if city.name in self.map.route or str(city.name) in self.map.route:
                 continue
-            stop = stop_path.getPythonTag("stopobj")
-            # find nearest city to this stop
-            cur_nearest_city, cur_nearest_distance = self.find_nearest_city_to_stop(stop)
-            if cur_nearest_city is not None:
-                if cur_nearest_distance < nearest_distance:
-                    nearest_distance = cur_nearest_distance
-                    nearest_city = cur_nearest_city
-                    nearest_stop = stop
-        self.notify.debug(f"Nearest city to current route is {nearest_city.name} at distance {nearest_distance}"
-                          f" via stop {nearest_stop.from_city.name}-{nearest_stop.to_city.name}")
 
-        # loop back to beginning
-        self.map.select_city(self.map.route[0])
+            # visit each edge
+            i = 1  # (starts at 1 to place after from_city)
+            for stop in self.map.bus.stop_nodes.getChildren():
+                # get stop object
+                stop_obj = stop.getPythonTag("stopobj")
+                if stop_obj is None:
+                    self.notify.error(f"Stop object not found for stop {stop}")
+                    continue
+
+                # compute edge cost
+                edge_cost = edge_distance(city.coords, stop_obj.from_city, stop_obj.to_city)
+                self.notify.debug(f"Edge cost to insert city {city.name} between {stop_obj.from_city.name}-{stop_obj.to_city.name} is {edge_cost}")
+
+                if edge_cost < lowest_cost:
+                    lowest_cost = edge_cost
+                    nearest_city = city
+                    stop_number = i
+                i += 1
+        # insert
+        if nearest_city is None or stop_number is None:
+            self.notify.warning("No nearest city or cheapest edge found, cannot expand tour")
+            self.map.complete_route()
+            return
+        self.map.route.insert(stop_number, nearest_city.name)
+
+        # redraw route
+        saved_route = self.map.route.copy()
+        self.map.reset()
+        for city_id in saved_route:
+            self.map.select_city(city_id)
+
 
     def build_ui(self):
         reset_button = DirectButton(text="Reset", scale=0.07,
