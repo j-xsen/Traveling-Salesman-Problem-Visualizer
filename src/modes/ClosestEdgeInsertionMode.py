@@ -147,15 +147,15 @@ class ClosestEdgeInsertionMode(Mode):
         generate_tour_button = DirectButton(text="Generate Full Tour", scale=0.07,
                                               pos=(1, 0, -.92),
                                               command=self.generate_full_tour)
-        view_bfs_button = DirectButton(text="View BFS", scale=0.07,
+        view_bfs_button = DirectButton(text="Brute Files", scale=0.07,
                                        command=self.recreate_files_buttons,
-                                       pos=(-1, 0, 0.9), extraArgs=[ProblemType.BRUTE_FORCE])
-        view_cei_button = DirectButton(text="View CEI", scale=0.07,
+                                       pos=(-1, 0, 0.6), extraArgs=[ProblemType.BRUTE_FORCE])
+        view_cei_button = DirectButton(text="CEI Files", scale=0.07,
                                        command=self.recreate_files_buttons,
-                                        pos=(-1, 0, 0.8), extraArgs=[ProblemType.CLOSEST_EDGE])
-        view_dfs_button = DirectButton(text="View DFS", scale=0.07,
+                                        pos=(-1, 0, 0.5), extraArgs=[ProblemType.CLOSEST_EDGE])
+        view_dfs_button = DirectButton(text="DFS Files", scale=0.07,
                                        command=self.recreate_files_buttons,
-                                       pos=(-1, 0, 0.7), extraArgs=[ProblemType.FIRST_SEARCH])
+                                       pos=(-1, 0, 0.4), extraArgs=[ProblemType.FIRST_SEARCH])
         self.ui.append(reset_button)
         self.ui.append(expand_tour)
         self.ui.append(generate_tour_button)
