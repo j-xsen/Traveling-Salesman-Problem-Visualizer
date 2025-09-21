@@ -1,21 +1,23 @@
 # Traveling Salesman Problem (TSP) Visualization (Panda3D)
 
-An interactive visualization of the Traveling Salesman Problem built with Panda3D. The app now supports two modes:
+An interactive visualization of the Traveling Salesman Problem built with Panda3D. The app now supports three modes:
 - Brute Force (BF): enumerate permutations for small instances and sort by total distance.
 - First Search (FS): explore a graph of predefined directed stops using Breadth-First Search (BFS) or Depth-First Search (DFS) to find the first route from a chosen start city to a chosen destination.
+- Closest Edge Insertion (CE): a constructive heuristic that grows a tour by repeatedly inserting the nearest unvisited city at the position (edge) that yields the smallest increase in total distance.
 
 ![homescreen.png](homescreen.png "Homescreen of the application")
 
 ## Features
 - Visualizes TSP-style nodes from .tsp files (TSPLIB-like format with NODE_COORD_SECTION).
-- Two modes of operation:
+- Three modes of operation:
   - Brute Force — generate all routes for bundled BF problems; results saved to results/.
   - First Search — interactively choose Start and Final cities, then either step through valid Stops or click "Generate Routes" to compute the first path using BFS/DFS.
-- Built-in mode switcher: "Brute Force" and "Breadth/Depth First Search" radio buttons.
+  - Closest Edge Insertion — step-by-step constructive heuristic; click "Expand Tour" to insert the nearest unvisited city at the cheapest edge position and grow the tour.
+- Built-in mode switcher: "Brute Force", "Breadth/Depth First Search", and "Closest Edge Insertion" radio buttons.
 - In First Search: on-screen labels show Starting City and Final City; BFS/DFS toggle via radio buttons.
 - Click cities to build your own route (BF mode) or to set Start/Final city (FS mode) and see cumulative Euclidean distance.
 - Buttons to switch between bundled instances per mode.
-- Zoom sliders for panning/zooming the scene.
+- Three position sliders: X (Left/Right), Z (Back/Forward), and Y (Up/Down) to move the graph view.
 - Clean Panda3D GUI (DirectGUI) with on-screen distance and route displays.
 
 ## Project Structure
@@ -24,6 +26,7 @@ An interactive visualization of the Traveling Salesman Problem built with Panda3
   - TSP.py — Simple TSPLIB-like parser and data model.
   - Map.py — Scene graph, city placement, selection, route generation, and UI elements.
   - City.py — City node model and label.
+  - PositionSlider.py — Three view sliders for X (Left/Right), Z (Back/Forward), Y (Up/Down).
   - bus/ — Distance accumulation and stop geometry.
     - Bus.py — Tracks total distance for the current route and displays it.
     - Stop.py — Visual/logic for selectable directed edges used by FS mode.
@@ -31,9 +34,11 @@ An interactive visualization of the Traveling Salesman Problem built with Panda3
     - Mode.py — Common mode utilities and file button generation. Loads from src/tsp/<MODE>.
     - BruteForceMode.py — Brute force interaction and result generation (BF mode).
     - FirstSearchMode.py — BFS/DFS logic, Start/Final selection, Stop navigation (FS mode).
+    - ClosestEdgeInsertionMode.py — Closest Edge Insertion heuristic (CE mode) with step-by-step tour growth.
   - tsp/
     - BF/ — Sample brute-force instances (Random4.tsp … Random12.tsp).
     - FS/ — Sample first-search instance(s) (e.g., 11PointDFSBFS.tsp) with predefined Stops.
+    - CE/ — Closest Edge Insertion instances (Random30.tsp, Random40.tsp).
 - results/ — Output directory for brute-force results (txt files).
 - config.prc — Panda3D config (e.g., window title).
 - requirements.txt — Python dependencies.
@@ -52,7 +57,7 @@ From the project root (same folder as main.py):
 
 Notes:
 - The app loads config.prc automatically for the window title and settings.
-- Default problem depends on the active mode when the app starts. By default, the app starts in First Search mode with src/tsp/FS/11PointDFSBFS.tsp.
+- Default problem depends on the active mode when the app starts. By default, the app starts in Closest Edge Insertion mode with src/tsp/CE/Random30.tsp.
 
 ## Modes and Interaction
 
@@ -60,7 +65,20 @@ Notes:
 - Use the radio buttons in the upper-right:
   - "Brute Force"
   - "Breadth/Depth First Search"
-- Each mode shows a grid of radio buttons (lower-left) listing available .tsp files for that mode’s directory (src/tsp/BF or src/tsp/FS). Selecting a file loads it.
+  - "Closest Edge Insertion"
+- Each mode shows a grid of radio buttons (lower-left) listing available .tsp files for that mode’s directory (src/tsp/BF, src/tsp/FS, or src/tsp/CE). Selecting a file loads it.
+
+### Closest Edge Insertion (CE)
+- Goal: Build a tour using a greedy insertion heuristic. At each step, choose the nearest unvisited city and insert it at the edge position that yields the smallest increase in total distance.
+- Files: Two CE instances are included — Random30.tsp and Random40.tsp (see src/tsp/CE/).
+- How to use:
+  1) Click "Expand Tour" to start and grow the tour step by step. If the route is empty, the app auto-starts at City 1 and inserts its nearest neighbor, then loops back to the start.
+  2) Each time you click "Expand Tour", the next nearest unvisited city is inserted into the current tour at the cheapest edge.
+  3) Repeat until all cities are included; the route is then marked complete.
+- Optional: You can click cities to manually select them; subsequent "Expand Tour" clicks will continue growing from your current route.
+- Controls in CE mode:
+  - Expand Tour: performs one insertion step and redraws the tour.
+  - Reset: clears the current route and distance.
 
 ### First Search (BFS/DFS)
 - Goal: Find a path from a Starting City to a Final City using only predefined directed Stops.
@@ -101,6 +119,6 @@ This app expects a minimal TSPLIB-like format with at least:
 - NODE_COORD_SECTION
 - One line per node: <index> <x> <y>
 
-Updated: 2025-09-06
+Updated: 2025-09-20
 
 *README.md updated by Junie, the AI coding agent by JetBrains.*
