@@ -68,7 +68,6 @@ class Map(NodePath):
         self.bus.making_stops = True
         for city in self.cities:
             city.show()
-        self.route_text_path.show()
         self.bus.distance_text_path.show()
 
     def get_current_loaded_file(self):
@@ -133,7 +132,7 @@ class Map(NodePath):
             if not is_first_city:
                 self.notify.warning(f"City {city_id} already selected")
                 return
-        self.route.append(city_id)
+        self.route.append(int(city_id))
         self.bus.add_stop(self.cities[int(city_id) - 1].coords)
 
         # check if loop

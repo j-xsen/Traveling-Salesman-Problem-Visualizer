@@ -1,3 +1,6 @@
+import os
+import time
+
 from direct.gui.DirectButton import DirectButton
 
 from src.modes.Mode import Mode, ProblemType
@@ -54,6 +57,13 @@ class ClosestEdgeInsertionMode(Mode):
             # loop to beginning
             self.map.select_city(1)
             return
+        elif len(self.map.route) == 1:
+            self.notify.debug("Route has one city, selecting nearest city")
+            nearest_city = self.find_nearest_city()
+            self.map.select_city(nearest_city.name)
+            # loop to beginning
+            self.map.select_city(self.map.route[0])
+            return
 
         self.notify.debug(f"Current route: {self.map.route}")
 
@@ -76,7 +86,7 @@ class ClosestEdgeInsertionMode(Mode):
 
                 # compute edge cost
                 edge_cost = edge_distance(city.coords, stop_obj.from_city, stop_obj.to_city)
-                self.notify.debug(f"Edge cost to insert city {city.name} between {stop_obj.from_city.name}-{stop_obj.to_city.name} is {edge_cost}")
+                # self.notify.debug(f"Edge cost to insert city {city.name} between {stop_obj.from_city.name}-{stop_obj.to_city.name} is {edge_cost}")
 
                 if edge_cost < lowest_cost:
                     lowest_cost = edge_cost
@@ -91,25 +101,48 @@ class ClosestEdgeInsertionMode(Mode):
         self.map.route.insert(stop_number, nearest_city.name)
 
         # redraw route
+        self.redraw_route()
+
+    def redraw_route(self):
+        self.notify.debug("Redrawing route...")
         saved_route = self.map.route.copy()
         self.map.reset()
         for city_id in saved_route:
             self.map.select_city(city_id)
+        self.notify.debug("Redrew route.")
 
+    def generate_full_tour(self):
+        self.notify.debug("Generating full tour...")
+        start_time = time.perf_counter()
+        self.map.reset()
+        while not self.map.route_complete:
+            self.expand_tour()
+        elapsed = time.perf_counter() - start_time
+        with open(f"results/{self.map.tsp.name}.txt", "w") as f:
+            f.write(f"Route found: {', '.join(map(str, self.map.route))}\n")
+            f.write(f"Distance: {self.map.bus.distance_traveled}\n")
+            f.write(f"Time taken: {elapsed} seconds\n")
+            f.flush()
+            os.fsync(f.fileno())
+        self.notify.debug("Generated full tour.")
 
     def build_ui(self):
         reset_button = DirectButton(text="Reset", scale=0.07,
-                                    pos=(1, 0, -0.8),
+                                    pos=(1, 0, -0.7),
                                     command=self.map.reset)
         expand_tour = DirectButton(text="Expand Tour", scale=0.07,
-                                   pos=(1, 0, -0.9),
+                                   pos=(1, 0, -0.8),
                                    command=self.expand_tour)
+        generate_tour_button = DirectButton(text="Generate Full Tour", scale=0.07,
+                                              pos=(1, 0, -.92),
+                                              command=self.generate_full_tour)
         self.ui.append(reset_button)
         self.ui.append(expand_tour)
+        self.ui.append(generate_tour_button)
 
     def on_mouse_click(self):
         # accept mouse
         selected_city = self.map.on_mouse_click("ClickableCity")
         if selected_city is None:
             return
-        self.map.select_city(str(selected_city).split("-")[1])
+        self.map.select_city(int(str(selected_city).split("-")[1]))
