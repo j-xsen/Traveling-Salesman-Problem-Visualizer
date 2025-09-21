@@ -118,13 +118,24 @@ class ClosestEdgeInsertionMode(Mode):
         while not self.map.route_complete:
             self.expand_tour()
         elapsed = time.perf_counter() - start_time
-        with open(f"results/{self.map.tsp.name}.txt", "w") as f:
+        with open(f"results/CEI-{self.map.tsp.name}.txt", "w") as f:
             f.write(f"Route found: {', '.join(map(str, self.map.route))}\n")
             f.write(f"Distance: {self.map.bus.distance_traveled}\n")
             f.write(f"Time taken: {elapsed} seconds\n")
             f.flush()
             os.fsync(f.fileno())
         self.notify.debug("Generated full tour.")
+
+    def recreate_files_buttons(self, new_type):
+        self.notify.debug(f"Recreating files and buttons for type {new_type}...")
+
+        if new_type is None:
+            self.notify.error("New problem type is None, cannot recreate files and buttons.")
+            return
+
+        self.clear_problem_buttons()
+        self.generate_files(new_type)
+        self.generate_buttons(self.map)
 
     def build_ui(self):
         reset_button = DirectButton(text="Reset", scale=0.07,
@@ -136,9 +147,21 @@ class ClosestEdgeInsertionMode(Mode):
         generate_tour_button = DirectButton(text="Generate Full Tour", scale=0.07,
                                               pos=(1, 0, -.92),
                                               command=self.generate_full_tour)
+        view_bfs_button = DirectButton(text="View BFS", scale=0.07,
+                                       command=self.recreate_files_buttons,
+                                       pos=(-1, 0, 0.9), extraArgs=[ProblemType.BRUTE_FORCE])
+        view_cei_button = DirectButton(text="View CEI", scale=0.07,
+                                       command=self.recreate_files_buttons,
+                                        pos=(-1, 0, 0.8), extraArgs=[ProblemType.CLOSEST_EDGE])
+        view_dfs_button = DirectButton(text="View DFS", scale=0.07,
+                                       command=self.recreate_files_buttons,
+                                       pos=(-1, 0, 0.7), extraArgs=[ProblemType.FIRST_SEARCH])
         self.ui.append(reset_button)
         self.ui.append(expand_tour)
         self.ui.append(generate_tour_button)
+        self.ui.append(view_bfs_button)
+        self.ui.append(view_cei_button)
+        self.ui.append(view_dfs_button)
 
     def on_mouse_click(self):
         # accept mouse

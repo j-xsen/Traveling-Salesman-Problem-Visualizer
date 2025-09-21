@@ -23,6 +23,7 @@ class Mode(DirectObject):
         self._type = problem_type
         self._default = default_problem
         self.ui = []
+        self.open_type = problem_type
         # files
         self.files = []
         self.generate_files()
@@ -73,8 +74,14 @@ class Mode(DirectObject):
         self.destroy()
         self.problem_buttons.clear()
 
-    def generate_files(self):
-        dir_path = f"src/tsp/{self.type.value}"
+    def generate_files(self, open_type=None):
+        if open_type is None:
+            open_type = self.type
+        self.open_type = open_type
+        if type(open_type) is not ProblemType:
+            self.notify.error(f"Invalid problem type: {type(open_type)}")
+            return
+        dir_path = f"src/tsp/{open_type.value}"
         if not os.path.exists(dir_path):
             self.notify.warning(f"Directory {dir_path} does not exist.")
             return
@@ -105,12 +112,18 @@ class Mode(DirectObject):
             button['command'] = self.load_problem
             button['extraArgs'] = [_map, button['value'][0], f"drb{button['value'][0]}"]
 
+    def clear_problem_buttons(self):
+        for button in self.problem_buttons:
+            button.destroy()
+        self.problem_buttons.clear()
+        self.files.clear()
+
     def load_problem(self, _map, file, src=""):
         self.notify.debug(f"Loading problem {file} from {src}")
         if _map.get_current_loaded_file() == file or self.last_loaded == file:
             self.notify.warning("Problem already loaded.")
             return
-        imported_tsp = read_tsp(self.type, file)
+        imported_tsp = read_tsp(self.open_type, file)
         _map.tsp = imported_tsp
         self.last_loaded = file
 
