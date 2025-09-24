@@ -19,6 +19,7 @@ setup(
                 'src/**.tsp',
                 '**/*.mf',
                 '**/*.prc',
+                'results/.keep'
             ],
 
             'plugins': [
