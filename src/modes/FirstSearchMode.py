@@ -14,8 +14,7 @@ from src.modes.Mode import Mode, ProblemType
 
 class FirstSearchMode(Mode):
     def __init__(self, _map):
-        super().__init__(ProblemType.FIRST_SEARCH, '11PointDFSBFS.tsp')
-        self.map = _map
+        super().__init__(ProblemType.FIRST_SEARCH, '11PointDFSBFS.tsp', _map)
         self.stops = {}
         self.route_complete = False
         self._current_city = None

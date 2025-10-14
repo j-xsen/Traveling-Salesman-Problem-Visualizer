@@ -16,7 +16,7 @@ class ProblemType(Enum):
 
 
 class Mode(DirectObject):
-    def __init__(self, problem_type, default_problem):
+    def __init__(self, problem_type, default_problem, _map):
         DirectObject.__init__(self)
         # notifier
         self.notify = directNotify.newCategory("Mode")
@@ -32,6 +32,8 @@ class Mode(DirectObject):
         # last loaded
         self.last_loaded = None
         self.accept("TSPChanged", self.update_last_loaded)
+        # map
+        self.map = _map
 
     def on_mouse_click(self):
         self.notify.warning("Mouse click not handled in base Mode class")

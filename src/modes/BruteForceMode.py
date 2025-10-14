@@ -9,8 +9,7 @@ from src.modes.Mode import Mode, ProblemType
 
 class BruteForceMode(Mode):
     def __init__(self, _map):
-        super().__init__(ProblemType.BRUTE_FORCE, 'Random4.tsp')
-        self.map = _map
+        super().__init__(ProblemType.BRUTE_FORCE, 'Random4.tsp', _map)
 
     def build_ui(self):
         generate_routes_button = DirectButton(text="Generate Routes", scale=0.07,
