@@ -12,6 +12,7 @@ class ProblemType(Enum):
     BRUTE_FORCE = "BF"
     FIRST_SEARCH = "FS"
     CLOSEST_EDGE = "CE"
+    GENETIC_ALGORITHM = "GA"
 
 
 class Mode(DirectObject):
