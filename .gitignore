@@ -4,6 +4,7 @@ __pycache__/**
 .venv/**
 *.pdf
 *.docx
+*.png
 build/**
 
 # oversized result files
