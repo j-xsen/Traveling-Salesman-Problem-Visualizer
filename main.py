@@ -9,7 +9,7 @@ from src.Map import Map
 from src.modes.BruteForceMode import BruteForceMode
 from src.modes.ClosestEdgeInsertionMode import ClosestEdgeInsertionMode
 from src.modes.FirstSearchMode import FirstSearchMode
-from src.modes.GeneticAlgorithm import GeneticAlgorithm
+from src.modes.GeneticAlgorithm.GeneticAlgorithm import GeneticAlgorithm
 
 loadPrcFile("./config.prc")
 

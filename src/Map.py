@@ -35,6 +35,8 @@ class Map(NodePath):
         self.bus = Bus()
         self.bus.reparentTo(self)
 
+        self.slider_nodes = []
+
         ## horizontal slider node
         h_slider_node = PositionSlider(range=(-100 - (scale * 5), 100), default=0, position=0, command=self.setX)
 
@@ -45,11 +47,18 @@ class Map(NodePath):
         default = 100 - (scale * 100)
         v_slider_node = PositionSlider(range=(default - (scale * 75), default + (scale * 75)), default=default,
                                        position=2, command=self.setZ)
+        self.slider_nodes.append(h_slider_node)
+        self.slider_nodes.append(v_slider_node)
+        self.slider_nodes.append(distance_slider_node)
 
         self.setPos(0, 0, 0)
         self.cities = []
         if self.tsp is not None:
             self.create_cities(self.tsp.coords)
+
+    def hide_sliders(self):
+        for slider in self.slider_nodes:
+            slider.hide()
 
     def get_city(self, city_id):
         return self.cities[int(city_id) - 1]

@@ -1,0 +1,316 @@
+import random
+from collections import defaultdict
+from enum import Enum
+
+import numpy as np
+from direct.gui.DirectButton import DirectButton
+from direct.gui.DirectFrame import DirectFrame
+from direct.gui.DirectLabel import DirectLabel
+from direct.gui.DirectRadioButton import DirectRadioButton
+from matplotlib import pyplot as plt
+from panda3d.core import TexturePool
+
+from src.modes.Mode import Mode, ProblemType
+from src.modes.GeneticAlgorithm.GARoute import GARoute
+
+
+POPULATION_SIZE = 100
+FITTEST_TO_SELECT = 10
+FRAME_HEIGHT = 0.9
+FRAME_WIDTH = 1.3
+GRAPH_BORDER = 0
+
+
+def mutate_child(child_route, type):
+    mutation_rate = 0.05
+    for i in range(len(child_route)):
+        if random.random() < mutation_rate:
+            # mutate
+            if type == MutationType.SWAP:
+                j = random.randint(0, len(child_route) - 1)
+                # swap cities at position i and j
+                child_route[i], child_route[j] = child_route[j], child_route[i]
+            elif type == MutationType.INVERSION:
+                j = random.randint(i, len(child_route) - 1)
+                # invert segment between i and j
+                child_route[i:j+1] = reversed(child_route[i:j+1])
+    return child_route
+
+
+class CrossoverType(Enum):
+    ORDERED = 1
+    PARTIAL_MAP = 2
+
+class MutationType(Enum):
+    SWAP = 1
+    INVERSION = 2
+
+
+class GeneticAlgorithm(Mode):
+    def __init__(self, _map):
+        super().__init__(ProblemType.GENETIC_ALGORITHM, 'Random100.tsp', _map)
+        self.map.hide_sliders()
+        self.population = []
+        self.crossover_type = CrossoverType.PARTIAL_MAP
+        self.mutation_type = MutationType.INVERSION
+
+    def build_ui(self):
+        # buttons
+        generate_population_button = DirectButton(text="Generate Population", scale=0.07,
+                                                 pos=(.9, 0, -0.7),
+                                                 command=self.generate_population)
+        progress_button = DirectButton(text="Progress Generation", scale=0.07,
+                                      pos=(.9, 0, -0.9),
+                                      command=self.progress_generation)
+
+        # gen 50 button
+        gen_fifty_button = DirectButton(text="Gen 50", scale=0.05,
+                                       pos=(.6, 0, -0.8),
+                                       command=self.nGenerations, extraArgs=[50],)
+
+        # find avg
+        avg_button = DirectButton(text="Find Avg Best Distance", scale=0.05,
+                                  pos=(.6, 0, -0.6),
+                                  command=self.find_avg_best_distance)
+
+        # radio buttons
+
+        #   crossover
+        crossover_buttons = [
+            DirectRadioButton(text="Ordered Crossover", scale=0.05, pos=(-1, 0, 0.3),
+                              variable=[self.crossover_type], value=[CrossoverType.ORDERED],
+                              command=self.set_crossover_type, extraArgs=[CrossoverType.ORDERED],),
+            DirectRadioButton(text="Partial Map Crossover", scale=0.05, pos=(-1, 0, .1),
+                              variable=[self.crossover_type], value=[CrossoverType.PARTIAL_MAP],
+                              command=self.set_crossover_type, extraArgs=[CrossoverType.PARTIAL_MAP],)
+        ]
+        for button in crossover_buttons:
+            button.setOthers(crossover_buttons)
+
+        #   mutation
+        mutation_buttons = [
+            DirectRadioButton(text="Swap Mutation", scale=0.05, pos=(-1, 0, -0.1),
+                              variable=[self.mutation_type], value=[MutationType.SWAP],
+                              command=self.set_mutation_type, extraArgs=[MutationType.SWAP], ),
+            DirectRadioButton(text="Inversion Mutation", scale=0.05, pos=(-1, 0, -0.3),
+                              variable=[self.mutation_type], value=[MutationType.INVERSION],
+                              command=self.set_mutation_type, extraArgs=[MutationType.INVERSION], )
+        ]
+        for button in mutation_buttons:
+            button.setOthers(mutation_buttons)
+
+        frame = DirectFrame(frameColor=(1, 1, 1, 1),
+                            frameSize=(-FRAME_WIDTH / 2, FRAME_WIDTH / 2,
+                                       -FRAME_HEIGHT / 2, FRAME_HEIGHT / 2),
+                            pos=(GRAPH_BORDER, 0,
+                                 -1 + FRAME_HEIGHT + GRAPH_BORDER))
+        self.ui.append(frame) # frame must be first
+        self.ui.append(generate_population_button)
+        self.ui.append(progress_button)
+        self.ui.append(mutation_buttons)
+        self.ui.append(crossover_buttons)
+        self.ui.append(gen_fifty_button)
+        self.ui.append(avg_button)
+
+        self.regenerate_plot()
+
+    def nGenerations(self, n):
+        for _ in range(n):
+            self.progress_generation(regen=False)
+        self.regenerate_plot()
+
+    def find_avg_best_distance(self):
+        # clear texture
+        self.remove_texture()
+
+        # config
+        run_times = 10
+        gen_times = 10
+
+        # totals
+        min_total = 0
+        max_total = 0
+        avg_distance_total = 0
+        for _ in range(run_times):
+            self.generate_population(regen=False)
+            cur_min = float('inf')
+            cur_max = 0
+            total_distance = 0
+            total_individuals = 0
+            # 50 generations
+            for _ in range(gen_times):
+                self.progress_generation(regen=False)
+                last_gen = self.population[-1]
+                last_gen.sort(key=lambda x: x.distance)
+
+                total_distance += sum(map(lambda g: g.distance, last_gen))
+                total_individuals += len(last_gen)
+
+                if last_gen[0].distance < cur_min:
+                    cur_min = last_gen[0].distance
+                if last_gen[-1].distance > cur_max:
+                    cur_max = last_gen[-1].distance
+            min_total += cur_min
+            max_total += cur_max
+            avg_distance = total_distance / total_individuals
+            avg_distance_total += avg_distance
+        avg_min = min_total / run_times
+        avg_max = max_total / run_times
+        avg_distance_overall = avg_distance_total / run_times
+
+    def set_mutation_type(self, mutation_type):
+        self.mutation_type = mutation_type
+
+    def set_crossover_type(self, crossover_type):
+        self.crossover_type = crossover_type
+
+    def regenerate_plot(self):
+        self.notify.debug("Regenerating plot...")
+        if len(self.population) == 0:
+            label = DirectLabel(text="No population generated yet.",
+                                scale=0.07,
+                                pos=(0, 0, 0),
+                                text_fg=(0, 0, 0, 1),
+                                parent=self.ui[0])
+            return
+        for child in self.ui[0].getChildren():
+            child.removeNode()
+
+        self.remove_texture()
+
+        fig, ax = plt.subplots(figsize=(FRAME_WIDTH * 5, FRAME_HEIGHT * 5))
+
+        plt.title(f"Genetic Algorithm - {self.mutation_type.name.title()} & {self.crossover_type.name.title()}")
+        plt.xlabel("Generation")
+        step = max(1, len(self.population)//10)
+        plt.xticks(np.arange(0, len(self.population)+1, step))
+        plt.ylabel("Distance")
+        plt.grid(True)
+
+        # plot each generation
+        min_distance, min_gen = float('inf'), 0
+        for gen_idx, gen in enumerate(self.population, start=1):
+            for ind in gen:
+                if ind.distance < min_distance:
+                    min_distance = ind.distance
+                    min_gen = gen_idx
+                ax.plot(gen_idx, ind.distance, 'o', alpha=0.5)
+
+        # text info
+        plt.text(0, .9, f"Generations: {len(self.population)}\n")
+        plt.text(-.15, -.175, f"Best distance: {min_distance:.3f} from gen {min_gen}\n",
+                 transform=plt.gca().transAxes,
+                 bbox=dict(facecolor='white', alpha=0.5))
+
+        # take picture
+        plt.savefig("progress.png")
+
+        # close plot
+        plt.close()
+
+        self.load_texture()
+
+    def remove_texture(self):
+        if self.ui and self.ui[0]['frameTexture']:
+            TexturePool.releaseTexture(self.ui[0]['frameTexture'])
+            self.ui[0]['frameTexture'] = None
+
+    def load_texture(self):
+        txtr = loader.loadTexture("progress.png")
+        self.ui[0]['frameTexture'] = txtr
+
+    def activate(self, _map):
+        super().activate(_map)
+        self.map.disable_rendering()
+
+    def generate_population(self, regen=True):
+        new_population = []
+        for _ in range(POPULATION_SIZE):
+            temp_cities = self.map.cities[:] # create temp copy
+            self.map.reset()
+            while len(temp_cities) > 0:
+                city = random.choice(temp_cities)
+                self.map.select_city(city.name)
+                temp_cities.remove(city)
+            self.map.select_city(self.map.route[0])  # return to start
+            new_population.append(GARoute(self.map.bus.distance_traveled, self.map.route[:]))
+        self.notify.debug(f"Generated initial population of size {len(new_population)}")
+        self.map.reset()
+        self.population = [new_population]
+        if regen:
+            self.regenerate_plot()
+
+    def generate_child(self, parent_list):
+        self.notify.debug("Generating new child...")
+        parent1, parent2 = random.choices(parent_list, k=2)  # select two
+
+        if self.crossover_type == CrossoverType.ORDERED:
+            # random crossover point
+            cutpoint = random.randint(1, len(parent1.route) - 2)
+            child_route = parent1.route[:cutpoint]
+            # add remainder from parent2
+            for city in parent2.route:
+                if city not in child_route:
+                    child_route.append(city)
+
+            # mutate child
+            mutate_child(child_route, self.mutation_type)
+        elif self.crossover_type == CrossoverType.PARTIAL_MAP:
+            # choose slice from parent1
+            start = random.randint(0, len(parent1.route) - 3)
+            end = random.randint(start + 1, len(parent1.route) - 1)
+            self.notify.debug(f"Selected slice from {start} to {end} for crossover.")
+            child_route = [None]*(len(parent2.route)-1)  # create empty route
+            # copy segment from parent1
+            for i in range(start, end):
+                child_route[i] = parent1.route[i]
+            self.notify.debug(f"Child route after copying from parent1: {child_route}")
+            # fill in remainder from parent2
+            p2_index = 0
+            used = set(child_route)
+            for i in range(len(child_route)):
+                if child_route[i] is None:
+                    while p2_index < len(parent2.route) and parent2.route[p2_index] in used:
+                        p2_index += 1
+                    if p2_index < len(parent2.route):
+                        child_route[i] = parent2.route[p2_index]
+                        used.add(parent2.route[p2_index])
+                        p2_index += 1
+
+            # mutate child
+            mutate_child(child_route, self.mutation_type)
+            self.notify.debug(f"Generated child route: {child_route}")
+
+        return child_route
+
+    def progress_generation(self, regen=True):
+        if len(self.population) == 0:
+            self.notify.warning("No population to progress, generate population first.")
+            return
+        last_gen = self.population[-1]
+        last_gen.sort(key=lambda x: x.distance)
+        new_gen = []
+        while len(new_gen) < POPULATION_SIZE:
+            child_route = self.generate_child(last_gen[:FITTEST_TO_SELECT])
+            # get distance
+            self.map.reset()
+            for city_id in child_route:
+                self.map.select_city(str(city_id))
+            self.map.select_city(str(child_route[0]))  # return to start
+
+            new_gen.append(GARoute(self.map.bus.distance_traveled, self.map.route[:]))
+        self.population.append(new_gen)
+        self.notify.debug("================================")
+        self.notify.debug(f"Progressed to generation {len(self.population)}!")
+        self.notify.debug(f"Mutation type: {self.mutation_type}, Crossover type: {self.crossover_type}")
+        self.notify.debug("Best candidates:")
+        for ind in new_gen[:3]:
+            self.notify.debug(f"Distance: {ind.distance}")
+        self.notify.debug("================================")
+        self.map.reset()
+        if regen:
+            self.regenerate_plot()
+
+
+    def on_mouse_click(self):
+        pass
