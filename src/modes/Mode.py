@@ -16,10 +16,10 @@ class ProblemType(Enum):
 
 
 class Mode(DirectObject):
-    def __init__(self, problem_type, default_problem, _map):
+    def __init__(self, problem_type, default_problem, _map, name="Mode"):
         DirectObject.__init__(self)
         # notifier
-        self.notify = directNotify.newCategory("Mode")
+        self.notify = directNotify.newCategory(name)
         # modes variables
         self._type = problem_type
         self._default = default_problem

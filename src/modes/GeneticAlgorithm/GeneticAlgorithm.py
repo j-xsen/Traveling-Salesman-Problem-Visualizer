@@ -48,7 +48,7 @@ class MutationType(Enum):
 
 class GeneticAlgorithm(Mode):
     def __init__(self, _map):
-        super().__init__(ProblemType.GENETIC_ALGORITHM, 'Random100.tsp', _map)
+        super().__init__(ProblemType.GENETIC_ALGORITHM, 'Random100.tsp', _map, name="GeneticAlgorithm")
         self.map.hide_sliders()
         self.population = []
         self.crossover_type = CrossoverType.PARTIAL_MAP
@@ -120,12 +120,14 @@ class GeneticAlgorithm(Mode):
         self.regenerate_plot()
 
     def find_avg_best_distance(self):
+        for child in self.ui[0].getChildren():
+            child.removeNode()
         # clear texture
         self.remove_texture()
 
         # config
-        run_times = 10
-        gen_times = 10
+        run_times = 50
+        gen_times = 100
 
         # totals
         min_total = 0
@@ -157,6 +159,29 @@ class GeneticAlgorithm(Mode):
         avg_min = min_total / run_times
         avg_max = max_total / run_times
         avg_distance_overall = avg_distance_total / run_times
+
+        # plt
+        labels = ['Avg Min', 'Avg Max', 'Avg Distance']
+        values = [avg_min, avg_max, avg_distance_overall]
+        colors = ['green', 'red', 'blue']
+
+        # create figure
+        plt.figure(figsize=(FRAME_WIDTH * 5, FRAME_HEIGHT * 5))
+        bars = plt.bar(labels, values, color=colors)
+
+        # title
+        plt.title(f'Genetic Algorithm {self.mutation_type.name} {self.crossover_type.name}')
+        plt.text(0.5, -.1175, f'Over {run_times} runs of {gen_times} generations each', transform=plt.gca().transAxes,
+                 ha='center', va='center')
+
+        for bar in bars:
+            yval = bar.get_height()
+            plt.text(bar.get_x() + bar.get_width()/2.0, yval, f'{yval:.2f}', va='bottom')
+
+        title = f"results/{self.mutation_type.name}-{self.crossover_type.name}-G{gen_times}-R{run_times}.png"
+        plt.savefig(title)
+        plt.close()
+        self.load_texture(texture_path=title)
 
     def set_mutation_type(self, mutation_type):
         self.mutation_type = mutation_type
@@ -215,8 +240,8 @@ class GeneticAlgorithm(Mode):
             TexturePool.releaseTexture(self.ui[0]['frameTexture'])
             self.ui[0]['frameTexture'] = None
 
-    def load_texture(self):
-        txtr = loader.loadTexture("progress.png")
+    def load_texture(self, texture_path="progress.png"):
+        txtr = loader.loadTexture(texture_path)
         self.ui[0]['frameTexture'] = txtr
 
     def activate(self, _map):
