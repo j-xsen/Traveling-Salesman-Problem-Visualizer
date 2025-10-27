@@ -1,4 +1,5 @@
 import random
+import time
 from collections import defaultdict
 from enum import Enum
 
@@ -19,18 +20,20 @@ FITTEST_TO_SELECT = 10
 FRAME_HEIGHT = 0.9
 FRAME_WIDTH = 1.3
 GRAPH_BORDER = 0
+RUN_TIMES = 50
+GEN_TIMES = 100
 
 
-def mutate_child(child_route, type):
+def mutate_child(child_route, mut_type):
     mutation_rate = 0.05
     for i in range(len(child_route)):
         if random.random() < mutation_rate:
             # mutate
-            if type == MutationType.SWAP:
+            if mut_type == MutationType.SWAP:
                 j = random.randint(0, len(child_route) - 1)
                 # swap cities at position i and j
                 child_route[i], child_route[j] = child_route[j], child_route[i]
-            elif type == MutationType.INVERSION:
+            elif mut_type == MutationType.INVERSION:
                 j = random.randint(i, len(child_route) - 1)
                 # invert segment between i and j
                 child_route[i:j+1] = reversed(child_route[i:j+1])
@@ -125,22 +128,24 @@ class GeneticAlgorithm(Mode):
         # clear texture
         self.remove_texture()
 
-        # config
-        run_times = 50
-        gen_times = 100
-
         # totals
         min_total = 0
         max_total = 0
         avg_distance_total = 0
-        for _ in range(run_times):
+        start_time = time.perf_counter()
+        run_times_list = []
+
+        for _ in range(RUN_TIMES):
             self.generate_population(regen=False)
             cur_min = float('inf')
             cur_max = 0
             total_distance = 0
             total_individuals = 0
+            run_start_time = time.perf_counter()
+
             # 50 generations
-            for _ in range(gen_times):
+            for _ in range(GEN_TIMES):
+
                 self.progress_generation(regen=False)
                 last_gen = self.population[-1]
                 last_gen.sort(key=lambda x: x.distance)
@@ -156,9 +161,13 @@ class GeneticAlgorithm(Mode):
             max_total += cur_max
             avg_distance = total_distance / total_individuals
             avg_distance_total += avg_distance
-        avg_min = min_total / run_times
-        avg_max = max_total / run_times
-        avg_distance_overall = avg_distance_total / run_times
+            run_elapsed = time.perf_counter() - run_start_time
+            run_times_list.append(run_elapsed)
+        avg_min = min_total / RUN_TIMES
+        avg_max = max_total / RUN_TIMES
+        avg_distance_overall = avg_distance_total / RUN_TIMES
+        time_elapsed = time.perf_counter() - start_time
+        time_averaged = sum(run_times_list) / RUN_TIMES
 
         # plt
         labels = ['Avg Min', 'Avg Max', 'Avg Distance']
@@ -171,14 +180,19 @@ class GeneticAlgorithm(Mode):
 
         # title
         plt.title(f'Genetic Algorithm {self.mutation_type.name} {self.crossover_type.name}')
-        plt.text(0.5, -.1175, f'Over {run_times} runs of {gen_times} generations each', transform=plt.gca().transAxes,
+        # text
+        plt.text(0.5, 1.1, f'Over {RUN_TIMES} runs of {GEN_TIMES} generations each', transform=plt.gca().transAxes,
                  ha='center', va='center')
+        plt.text(1.1, -.1175, f'Avg Time/Run: {time_averaged:.2f} secs', transform=plt.gca().transAxes,
+                 ha='right', va='center',)
+        plt.text(-.12, -.1175, f'Total Time: {time_elapsed:.2f} sec', transform=plt.gca().transAxes,
+                 ha='left', va='center')
 
         for bar in bars:
             yval = bar.get_height()
             plt.text(bar.get_x() + bar.get_width()/2.0, yval, f'{yval:.2f}', va='bottom')
 
-        title = f"results/{self.mutation_type.name}-{self.crossover_type.name}-G{gen_times}-R{run_times}.png"
+        title = f"results/GA/{self.mutation_type.name}-{self.crossover_type.name}-G{GEN_TIMES}-R{RUN_TIMES}.png"
         plt.savefig(title)
         plt.close()
         self.load_texture(texture_path=title)
