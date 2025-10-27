@@ -1,4 +1,6 @@
+import matplotlib
 from setuptools import setup
+import os
 
 setup(
     name='Traveling Salesman Problem Visualizer',
@@ -6,25 +8,30 @@ setup(
     description='A visualizer for the Traveling Salesman Problem using Panda3D',
     author='Jaxsen Honeycutt',
     options={
-        'build_apps': {
-            'gui_apps': {
-                'tsp_visualizer': 'main.py',
+        "build_apps": {
+            "gui_apps": {
+                "tsp_visualizer": "main.py",
             },
 
-            'log_filename': '$USER_APPDATA/TravelingSalesmanProblem/logs/tsp_visualizer.log',
-            'log_append': False,
+            # Log file in the same folder as the executable
+            "log_filename": "tsp_visualizer.log",
+            "log_append": False,
 
-            'include_patterns': [
-                'src/tsp/**',
-                'src/**.tsp',
-                '**/*.mf',
-                '**/*.prc',
-                'results/.keep'
+            # Include source files, data, and matplotlib data
+            "include_patterns": [
+                "src/**",
+                "**/*.mf",
+                "**/*.prc",
+                "results/.keep",
+                "results/GA/.keep",
+                f"{matplotlib.get_data_path()}/**"
             ],
 
-            'plugins': [
-                'pandagl',
-            ]
+            # platforms
+            "platforms": ["manylinux2014_x86_64"],
+
+            # Plugins you need
+            "plugins": ["pandagl"],
         }
     }
 )
