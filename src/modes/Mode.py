@@ -13,6 +13,7 @@ class ProblemType(Enum):
     FIRST_SEARCH = "FS"
     CLOSEST_EDGE = "CE"
     GENETIC_ALGORITHM = "GA"
+    WISDOM_OF_CROWDS = "WOC"
 
 
 class Mode(DirectObject):
