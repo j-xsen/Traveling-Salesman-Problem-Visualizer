@@ -10,6 +10,7 @@ from src.modes.BruteForceMode import BruteForceMode
 from src.modes.ClosestEdgeInsertionMode import ClosestEdgeInsertionMode
 from src.modes.FirstSearchMode import FirstSearchMode
 from src.modes.GeneticAlgorithm.GeneticAlgorithm import GeneticAlgorithm
+from src.modes.WisdomOfCrowds import WisdomOfCrowds
 
 loadPrcFile("./config.prc")
 
@@ -39,7 +40,8 @@ class TravelingSalesmanProblem(ShowBase):
         FSMode = FirstSearchMode(self.map)
         CEMode = ClosestEdgeInsertionMode(self.map)
         GAMode = GeneticAlgorithm(self.map)
-        self._mode = GAMode
+        WOCMode = WisdomOfCrowds(self.map)
+        self._mode = WOCMode
 
         # modes radio buttons
         buttons = [
@@ -51,7 +53,9 @@ class TravelingSalesmanProblem(ShowBase):
                               value=[CEMode], command=self.set_mode, extraArgs=[CEMode]),
             DirectRadioButton(text="Genetic Algorithm", scale=0.07, pos=(0.9, 0, 0.45),
                             variable=[self.mode],
-                            value=[GAMode], command=self.set_mode, extraArgs=[GAMode])
+                            value=[GAMode], command=self.set_mode, extraArgs=[GAMode]),
+            DirectRadioButton(text="Wisdom of Crowds", scale=0.07, pos=(1, 0, 0.3), variable=[self.mode],
+                              value=[WOCMode], command=self.set_mode, extraArgs=[WOCMode]),
         ]
         for button in buttons:
             button.setOthers(buttons)
