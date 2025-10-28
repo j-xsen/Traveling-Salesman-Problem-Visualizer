@@ -5,6 +5,7 @@ from enum import Enum
 
 import numpy as np
 from direct.gui.DirectButton import DirectButton
+from direct.gui.DirectEntry import DirectEntry
 from direct.gui.DirectFrame import DirectFrame
 from direct.gui.DirectLabel import DirectLabel
 from direct.gui.DirectRadioButton import DirectRadioButton
@@ -38,6 +39,22 @@ def mutate_child(child_route, mut_type):
                 # invert segment between i and j
                 child_route[i:j+1] = reversed(child_route[i:j+1])
     return child_route
+
+def update_gen_times(value):
+    # verify value is int
+    if not value.isdigit():
+        return
+    global GEN_TIMES
+    print(f"Updating GEN_TIMES to {value}")
+    GEN_TIMES = int(value)
+
+def update_run_times(value):
+    # verify value is int
+    if not value.isdigit():
+        return
+    global RUN_TIMES
+    print(f"Updating RUN_TIMES to {value}")
+    RUN_TIMES = int(value)
 
 
 class CrossoverType(Enum):
@@ -75,6 +92,18 @@ class GeneticAlgorithm(Mode):
         avg_button = DirectButton(text="Find Avg Best Distance", scale=0.05,
                                   pos=(.6, 0, -0.6),
                                   command=self.find_avg_best_distance)
+
+        # entry for variables
+        generations_entry = DirectEntry(scale=0.05, initialText=str(GEN_TIMES),
+                                        pos=(-.75, 0, 0.6), frameColor=(1, 1, 1, 1),
+                                        command=update_gen_times)
+        generations_label = DirectLabel(text="Generations to run:", scale=0.05,
+                                        pos=(-1, 0, 0.6), text_fg=(0, 0, 0, 1),)
+        run_times_entry = DirectEntry(scale=0.05, initialText=str(RUN_TIMES),
+                                      pos=(-.75, 0, 0.75), frameColor=(1, 1, 1, 1),
+                                      command=update_run_times)
+        run_times_label = DirectLabel(text="Run times:", scale=0.05,
+                                      pos=(-1, 0, 0.75), text_fg=(0, 0, 0, 1),)
 
         # radio buttons
 
@@ -114,6 +143,10 @@ class GeneticAlgorithm(Mode):
         self.ui.append(crossover_buttons)
         self.ui.append(gen_fifty_button)
         self.ui.append(avg_button)
+        self.ui.append(generations_entry)
+        self.ui.append(generations_label)
+        self.ui.append(run_times_entry)
+        self.ui.append(run_times_label)
 
         self.regenerate_plot()
 
