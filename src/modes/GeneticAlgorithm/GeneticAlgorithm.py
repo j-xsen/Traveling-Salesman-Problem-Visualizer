@@ -1,4 +1,5 @@
 import random
+import statistics
 import time
 from collections import defaultdict
 from enum import Enum
@@ -16,13 +17,15 @@ from src.modes.Mode import Mode, ProblemType
 from src.modes.GeneticAlgorithm.GARoute import GARoute
 
 
-POPULATION_SIZE = 100
-FITTEST_TO_SELECT = 10
+# gui
 FRAME_HEIGHT = 0.9
 FRAME_WIDTH = 1.3
 GRAPH_BORDER = 0
-RUN_TIMES = 50
-GEN_TIMES = 100
+# genetic algorithm parameters
+RUN_TIMES = 3
+GEN_TIMES = 3
+POPULATION_SIZE = 10
+FITTEST_TO_SELECT = 4
 
 
 def mutate_child(child_route, mut_type):
@@ -47,6 +50,14 @@ def update_gen_times(value):
     global GEN_TIMES
     print(f"Updating GEN_TIMES to {value}")
     GEN_TIMES = int(value)
+
+def update_population_size(value):
+    # verify value is int
+    if not value.isdigit():
+        return
+    global POPULATION_SIZE
+    print(f"Updating POPULATION_SIZE to {value}")
+    POPULATION_SIZE = int(value)
 
 def update_run_times(value):
     # verify value is int
@@ -90,7 +101,7 @@ class GeneticAlgorithm(Mode):
 
         # find avg
         avg_button = DirectButton(text="Find Avg Best Distance", scale=0.05,
-                                  pos=(.6, 0, -0.6),
+                                  pos=(-.8, 0, .5),
                                   command=self.find_avg_best_distance)
 
         # entry for variables
@@ -104,6 +115,11 @@ class GeneticAlgorithm(Mode):
                                       command=update_run_times)
         run_times_label = DirectLabel(text="Run times:", scale=0.05,
                                       pos=(-1, 0, 0.75), text_fg=(0, 0, 0, 1),)
+        population_entry = DirectEntry(scale=0.05, initialText=str(POPULATION_SIZE),
+                                       pos=(-.75, 0, 0.9), frameColor=(1,1,1,1),
+                                       command=update_population_size)
+        population_label = DirectLabel(text="Population Size:", scale=0.05,
+                                       pos=(-1, 0, 0.9), text_fg=(0,0,0,1),)
 
         # radio buttons
 
@@ -147,6 +163,8 @@ class GeneticAlgorithm(Mode):
         self.ui.append(generations_label)
         self.ui.append(run_times_entry)
         self.ui.append(run_times_label)
+        self.ui.append(population_entry)
+        self.ui.append(population_label)
 
         self.regenerate_plot()
 
@@ -167,6 +185,11 @@ class GeneticAlgorithm(Mode):
         avg_distance_total = 0
         start_time = time.perf_counter()
         run_times_list = []
+        distance_list = []
+        min_list = []
+        max_list = []
+        best_route = []
+        best_distance = float('inf')
 
         for _ in range(RUN_TIMES):
             self.generate_population(regen=False)
@@ -176,6 +199,8 @@ class GeneticAlgorithm(Mode):
             total_individuals = 0
             run_start_time = time.perf_counter()
 
+            cur_dist_list = []
+
             # 50 generations
             for _ in range(GEN_TIMES):
 
@@ -183,13 +208,22 @@ class GeneticAlgorithm(Mode):
                 last_gen = self.population[-1]
                 last_gen.sort(key=lambda x: x.distance)
 
+                cur_dist_list.append(sum(map(lambda g: g.distance, last_gen)) / len(last_gen))
+
                 total_distance += sum(map(lambda g: g.distance, last_gen))
                 total_individuals += len(last_gen)
 
                 if last_gen[0].distance < cur_min:
                     cur_min = last_gen[0].distance
+                    best_route = last_gen[0].route[:]
+                    if last_gen[0].distance < best_distance:
+                        best_distance = last_gen[0].distance
                 if last_gen[-1].distance > cur_max:
                     cur_max = last_gen[-1].distance
+
+            distance_list.append(sum(cur_dist_list))
+            min_list.append(cur_min)
+            max_list.append(cur_max)
             min_total += cur_min
             max_total += cur_max
             avg_distance = total_distance / total_individuals
@@ -202,6 +236,9 @@ class GeneticAlgorithm(Mode):
         time_elapsed = time.perf_counter() - start_time
         time_averaged = sum(run_times_list) / RUN_TIMES
 
+        # std dev
+        yerrs = [statistics.stdev(min_list), statistics.stdev(max_list), statistics.stdev(distance_list)]
+
         # plt
         labels = ['Avg Min', 'Avg Max', 'Avg Distance']
         values = [avg_min, avg_max, avg_distance_overall]
@@ -211,21 +248,44 @@ class GeneticAlgorithm(Mode):
         plt.figure(figsize=(FRAME_WIDTH * 5, FRAME_HEIGHT * 5))
         bars = plt.bar(labels, values, color=colors)
 
+        # create errorbars
+        for i in range(len(bars)):
+            plt.errorbar(bars[i].get_x() + bars[i].get_width() / 5, values[i],
+                         yerr=yerrs[i], fmt='none', ecolor='black', capsize=10)
+            y_top = values[i] + yerrs[i]
+            plt.text(bars[i].get_x() + bars[i].get_width() / 5, y_top+200, f'±{yerrs[i]:.2f}', ha='center', va='center', fontsize=10)
+
         # title
-        plt.title(f'Genetic Algorithm {self.mutation_type.name} {self.crossover_type.name}')
+        plt.title(f'Genetic Algorithm {self.mutation_type.name} {self.crossover_type.name}', fontweight='bold',
+                  fontsize=14, x=0.5, y=1.07)
         # text
-        plt.text(0.5, 1.1, f'Over {RUN_TIMES} runs of {GEN_TIMES} generations each', transform=plt.gca().transAxes,
-                 ha='center', va='center')
+        plt.text(0.5, 1.04, f'Over {RUN_TIMES} runs of {GEN_TIMES} generations each / Population: {POPULATION_SIZE}', transform=plt.gca().transAxes,
+                 ha='center', va='center',fontsize=12)
         plt.text(1.1, -.1175, f'Avg Time/Run: {time_averaged:.2f} secs', transform=plt.gca().transAxes,
                  ha='right', va='center',)
         plt.text(-.12, -.1175, f'Total Time: {time_elapsed:.2f} sec', transform=plt.gca().transAxes,
                  ha='left', va='center')
+        plt.text(-.12, -.2, f'Best: {min(min_list):.2f} / Worst: {max(max_list):.2f}', transform=plt.gca().transAxes,)
+
+        # plt.subplots_adjust(bottom=0.2)
+        plt.margins(y=0.1)
 
         for bar in bars:
             yval = bar.get_height()
-            plt.text(bar.get_x() + bar.get_width()/2.0, yval, f'{yval:.2f}', va='bottom')
+            plt.text(bar.get_x() + bar.get_width()/2.0, yval, f'{yval:.2f}', va='bottom', fontweight="bold")
 
         title = f"results/GA/{self.mutation_type.name}-{self.crossover_type.name}-G{GEN_TIMES}-R{RUN_TIMES}.png"
+        with open(f"{title[:-4]}.txt", 'w') as f:
+            f.write(f"Best Route:\n{best_route}\n\n")
+            f.write(f"Distance:\t{best_distance:.5f}\n")
+            f.write(f"Overall Min:\t{min(min_list):.5f}\n")
+            f.write(f"Overall Max:\t{max(max_list):.5f}\n")
+            f.write(f"Avg Min:\t{avg_min:.5f}\n")
+            f.write(f"Avg Max:\t{avg_max:.5f}\n")
+            f.write(f"Avg Distance:\t{avg_distance_overall:.5f}\n")
+            f.write(f"Total Distance:\t{sum(distance_list):.5f}\n")
+            f.write(f"Time Elapsed:\t{time_elapsed:.5f}\n")
+            f.write(f"Avg Time/Run:\t{time_averaged:.5f}\n")
         plt.savefig(title)
         plt.close()
         self.load_texture(texture_path=title)
