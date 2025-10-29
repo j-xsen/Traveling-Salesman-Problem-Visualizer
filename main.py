@@ -10,7 +10,7 @@ from src.modes.BruteForceMode import BruteForceMode
 from src.modes.ClosestEdgeInsertionMode import ClosestEdgeInsertionMode
 from src.modes.FirstSearchMode import FirstSearchMode
 from src.modes.GeneticAlgorithm.GeneticAlgorithm import GeneticAlgorithm
-from src.modes.WisdomOfCrowds import WisdomOfCrowds
+from src.modes.WisdomOfCrowds.WisdomOfCrowds import WisdomOfCrowds
 
 loadPrcFile("./config.prc")
 

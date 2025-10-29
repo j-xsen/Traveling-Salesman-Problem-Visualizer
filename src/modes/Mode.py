@@ -59,6 +59,11 @@ class Mode(DirectObject):
             button.destroy()
         self.problem_buttons.clear()
         for element in self.ui:
+            if type(element) is list:
+                for sub_element in element:
+                    if sub_element:
+                        sub_element.destroy()
+                continue
             element.destroy()
         self.ui.clear()
 
