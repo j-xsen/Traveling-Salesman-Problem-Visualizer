@@ -294,6 +294,12 @@ class GeneticAlgorithm(Mode):
     def activate(self, _map):
         super().activate(_map)
         self.map.disable_rendering()
+        self.map.disable_text()
+
+    def deactivate(self):
+        super().deactivate()
+        self.map.enable_rendering()
+        self.map.enable_text()
 
     def generate_population(self, regen=True):
         new_population = []

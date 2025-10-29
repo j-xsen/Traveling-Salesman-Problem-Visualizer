@@ -58,7 +58,11 @@ class Mode(DirectObject):
             button.destroy()
         self.problem_buttons.clear()
         for element in self.ui:
-            element.destroy()
+            if type(element) is list:
+                for sub_element in element:
+                    sub_element.destroy()
+            else:
+                element.destroy()
         self.ui.clear()
 
     def activate(self, _map):

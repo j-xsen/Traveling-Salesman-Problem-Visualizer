@@ -173,6 +173,14 @@ class Map(NodePath):
             picker_np.removeNode()
         return None
 
+    def disable_text(self):
+        self.bus.hide_distance_text()
+        self.route.display = False
+
+    def enable_text(self):
+        self.bus.show_distance_text()
+        self.route.display = True
+
     @property
     def tsp(self):
         return self._TSP

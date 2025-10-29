@@ -2,8 +2,9 @@ from panda3d.core import TextNode
 
 
 class Route(list):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, display=True, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self._display = display
         self.route_text = TextNode("route")
         self.route_text.setText("Route: ")
         self.route_text.setAlign(TextNode.ALeft)
@@ -16,6 +17,17 @@ class Route(list):
             self.route_text.setText("Route: ")
         else:
             self.route_text.setText(f"Route: {', '.join(map(str, self))}")
+
+    @property
+    def display(self):
+        return self._display
+    @display.setter
+    def display(self, value):
+        self._display = value
+        if value:
+            self.route_text_path.show()
+        else:
+            self.route_text_path.hide()
 
     def _trigger(self):
         self.update_route_text()

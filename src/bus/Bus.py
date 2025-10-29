@@ -24,6 +24,12 @@ class Bus(NodePath):
         self.stop_nodes = NodePath("Stops")
         self.stop_nodes.reparentTo(self)
 
+    def hide_distance_text(self):
+        self.distance_text_path.hide()
+
+    def show_distance_text(self):
+        self.distance_text_path.show()
+
     def complete_route(self):
         for child in self.stop_nodes.getChildren():
             child.selected = False
