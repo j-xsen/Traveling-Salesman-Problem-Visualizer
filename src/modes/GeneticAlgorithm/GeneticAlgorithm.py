@@ -11,7 +11,7 @@ from direct.gui.DirectFrame import DirectFrame
 from direct.gui.DirectLabel import DirectLabel
 from direct.gui.DirectRadioButton import DirectRadioButton
 from matplotlib import pyplot as plt
-from panda3d.core import TexturePool
+from panda3d.core import TexturePool, transpose
 
 from src.modes.Mode import Mode, ProblemType
 from src.modes.GeneticAlgorithm.GARoute import GARoute
@@ -22,10 +22,10 @@ FRAME_HEIGHT = 0.9
 FRAME_WIDTH = 1.3
 GRAPH_BORDER = 0
 # genetic algorithm parameters
-RUN_TIMES = 3
-GEN_TIMES = 3
-POPULATION_SIZE = 10
-FITTEST_TO_SELECT = 4
+RUN_TIMES = 50
+GEN_TIMES = 100
+POPULATION_SIZE = 100
+FITTEST_TO_SELECT = 10
 
 
 def mutate_child(child_route, mut_type):
@@ -94,8 +94,8 @@ class GeneticAlgorithm(Mode):
                                       pos=(.9, 0, -0.9),
                                       command=self.progress_generation)
 
-        # gen 50 button
-        gen_fifty_button = DirectButton(text="Gen 50", scale=0.05,
+        # prog 50 button
+        prog_fifty_button = DirectButton(text="Prog 50", scale=0.05,
                                        pos=(.6, 0, -0.8),
                                        command=self.nGenerations, extraArgs=[50],)
 
@@ -157,7 +157,7 @@ class GeneticAlgorithm(Mode):
         self.ui.append(progress_button)
         self.ui.append(mutation_buttons)
         self.ui.append(crossover_buttons)
-        self.ui.append(gen_fifty_button)
+        self.ui.append(prog_fifty_button)
         self.ui.append(avg_button)
         self.ui.append(generations_entry)
         self.ui.append(generations_label)
@@ -321,26 +321,34 @@ class GeneticAlgorithm(Mode):
 
         # plot each generation
         min_distance, min_gen = float('inf'), 0
+        best_route = []
         for gen_idx, gen in enumerate(self.population, start=1):
             for ind in gen:
                 if ind.distance < min_distance:
                     min_distance = ind.distance
                     min_gen = gen_idx
+                    best_route = ind.route[:]
                 ax.plot(gen_idx, ind.distance, 'o', alpha=0.5)
 
         # text info
-        plt.text(0, .9, f"Generations: {len(self.population)}\n")
+        plt.text(.7, -.175, f"Generations: {len(self.population)}\n", transform=plt.gca().transAxes,)
         plt.text(-.15, -.175, f"Best distance: {min_distance:.3f} from gen {min_gen}\n",
-                 transform=plt.gca().transAxes,
-                 bbox=dict(facecolor='white', alpha=0.5))
+                 transform=plt.gca().transAxes,)
 
         # take picture
-        plt.savefig("progress.png")
+        title = f"results/GA/{self.mutation_type.name}-{self.crossover_type.name}-ProgGen.png"
+        plt.savefig(title)
+
+        with open(f"{title[:-4]}-info.txt", 'w') as f:
+            f.write(f"Best Route:\n{best_route}\n\n")
+            f.write(f"Best Distance:\t{min_distance:.5f} from Generation {min_gen}\n")
+            f.write(f"Total Generations:\t{len(self.population)}\n")
+            f.write(f"Population Size:\t{POPULATION_SIZE}\n")
 
         # close plot
         plt.close()
 
-        self.load_texture()
+        self.load_texture(texture_path=title)
 
     def remove_texture(self):
         if self.ui and self.ui[0]['frameTexture']:
