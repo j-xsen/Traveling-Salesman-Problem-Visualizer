@@ -16,6 +16,8 @@ setup(
             # Log file in the same folder as the executable
             "log_filename": "tsp_visualizer.log",
             "log_append": False,
+			
+			
 
             # Include source files, data, and matplotlib data
             "include_patterns": [
@@ -24,11 +26,8 @@ setup(
                 "**/*.prc",
                 "results/.keep",
                 "results/GA/.keep",
-                f"{matplotlib.get_data_path()}/**"
+                "Lib/matplotlib/mpl-data/**"
             ],
-
-            # platforms
-            "platforms": ["manylinux2014_x86_64"],
 
             # Plugins you need
             "plugins": ["pandagl"],
