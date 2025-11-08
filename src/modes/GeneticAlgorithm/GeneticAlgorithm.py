@@ -74,6 +74,9 @@ class GeneticAlgorithm(Mode):
         self.crossover_type = CrossoverType.PARTIAL_MAP
         self.mutation_type = MutationType.INVERSION
 
+    def activate(self, _map, stops=False):
+        Mode.activate(self, _map, stops)
+
     def build_ui(self):
         # buttons
         generate_population_button = DirectButton(text="Generate Population", scale=0.07,
@@ -290,10 +293,6 @@ class GeneticAlgorithm(Mode):
     def load_texture(self, texture_path="progress.png"):
         txtr = loader.loadTexture(texture_path)
         self.ui[0]['frameTexture'] = txtr
-
-    def activate(self, _map):
-        super().activate(_map)
-        self.map.disable_rendering()
 
     def generate_population(self, regen=True):
         new_population = []

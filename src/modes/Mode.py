@@ -67,7 +67,12 @@ class Mode(DirectObject):
             element.destroy()
         self.ui.clear()
 
-    def activate(self, _map):
+    def activate(self, _map, stops=True):
+        self.map.bus.making_stops = stops
+        if stops:
+            self.map.enable_rendering()
+        else:
+            self.map.disable_rendering()
         self.notify.debug(f"Activating modes {self.type}")
         self.accept("mouse1-up", self.on_mouse_click)
         self.load_problem(_map, self.default, "default")

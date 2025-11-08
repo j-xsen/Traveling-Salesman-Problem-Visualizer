@@ -139,10 +139,9 @@ class FirstSearchMode(Mode):
             f.flush()
             os.fsync(f.fileno())
 
-    def activate(self, _map):
-        super().activate(_map)
+    def activate(self, _map, steps=True):
+        super().activate(_map, steps)
         self.disable_generate_routes_button()
-        self.map.bus.making_stops = False
 
     def reset(self):
         self.current_city = None
