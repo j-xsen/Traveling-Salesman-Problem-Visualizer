@@ -40,7 +40,7 @@ class TravelingSalesmanProblem(ShowBase):
         FSMode = FirstSearchMode(self.map)
         CEMode = ClosestEdgeInsertionMode(self.map)
         GAMode = GeneticAlgorithm(self.map)
-        WOCMode = WisdomOfCrowds(self.map)
+        WOCMode = WisdomOfCrowds(self)
         self._mode = WOCMode
 
         # modes radio buttons
