@@ -1,10 +1,7 @@
 from direct.directnotify.DirectNotifyGlobal import directNotify
-from direct.gui.DirectButton import DirectButton
-from direct.showbase.ShowBase import ShowBase
-from panda3d.core import WindowProperties, NodePath
 
 from src.modes.Mode import Mode, ProblemType
-from src.modes.WisdomOfCrowds.CrowdManager import CrowdManager
+from src.modes.WisdomOfCrowds.ui.CrowdManager import CrowdManager
 
 
 class WisdomOfCrowds(Mode):
@@ -22,3 +19,6 @@ class WisdomOfCrowds(Mode):
 
     def build_crowd(self):
         self.notify.debug("Building crowd...")
+
+    def on_mouse_click(self):
+        pass

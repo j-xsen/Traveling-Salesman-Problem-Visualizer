@@ -9,6 +9,9 @@ from direct.gui.DirectLabel import DirectLabel
 from direct.showbase.DirectObject import DirectObject
 from direct.showbase.ShowBase import ShowBase
 from panda3d.core import WindowProperties, NodePath, FrameBufferProperties, ButtonThrower, GraphicsWindow, ButtonHandle
+from panda3d_tools import text_stats
+
+from src.modes.WisdomOfCrowds.ui.PeoplePicker import PeoplePicker
 
 bh = ButtonHandle("b")
 
@@ -25,6 +28,7 @@ class CrowdManager(DirectObject):
         # window stuff
         self.crowd_manager_cam = None
         self.crowd_manager_win = None
+        self.people_picker = None
         self.accept("close-crowd-manager-window", self.destroy)
 
     def destroy(self):
@@ -51,31 +55,28 @@ class CrowdManager(DirectObject):
 
     def build_ui(self):
         frame = DirectFrame(frameColor=(0, 0, 0, 1),
-                            frameSize=(0, 2.66, 0, 2),
-                            pos=(-1.33, 0, -3),
-                            parent=base.aspect2d)
+                            frameSize=(0, 1, 0, 1),
+                            pos=(0, 0, 0),
+                            parent=base.a2dBottomRight)
         self.ui.append(frame)
 
-        title = DirectLabel(text="Crowd Manager",
-                            scale=0.1, pos=(1.25, 0, 1.9),
-                            parent=frame)
-        self.ui.append(title)
-
+        crowd_np = frame.attachNewNode("crowd_np")
         crowd_size_label = DirectLabel(text="Crowd Size:",
-                                       scale=0.07, pos=(1,0,1.7),
+                                       scale=0.07, pos=(-.5,0,.155),
                                        text_pos=(0,0),
                                        text_fg=(1,1,1,1),
-                                       frameColor=(1,1,1,1),
-                                       parent=frame)
+                                       frameColor=(0,0,0,0),
+                                       parent=crowd_np)
         self.ui.append(crowd_size_label)
         crowd_size = DirectEntry(text="", scale=0.07, initialText="10",
-                                 parent=frame, pos=(1.25, 0, 1.7),
-                                 text_fg=(1,1,1,1),
-                                 frameColor=(1, 1, 1, 1),focus=1)
+                                 parent=crowd_np, pos=(-.3, 0, .14),
+                                 text_pos=(0.15,0.2),
+                                 text_fg=(1,1,1,1), frameSize=(0, 2, 0, 1),
+                                 frameColor=(1, 1, 1, 0.5), width=2.5)
         self.ui.append(crowd_size)
 
         make_new_crowd_button = DirectButton(text="Create new Crowd", scale=0.07,
-                                             pos=(1.25, 0, 1.5),
+                                             pos=(-.35, 0, .05),
                                              command=self.make_new_crowd,
                                              frameColor=(
                                                  (0.8, 0.8, 0.8, 1),  # Normal
@@ -84,6 +85,8 @@ class CrowdManager(DirectObject):
                                                  (0.5, 0.5, 0.5, 1)  # Disabled
                                              ), parent=frame)
         self.ui.append(make_new_crowd_button)
+        people_picker = PeoplePicker(frame)
+        self.ui.append(people_picker)
 
     def make_new_crowd(self):
         self.notify.debug("Making new crowd...")
