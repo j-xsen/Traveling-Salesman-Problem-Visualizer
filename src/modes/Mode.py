@@ -4,6 +4,7 @@ from enum import Enum
 from direct.directnotify.DirectNotifyGlobal import directNotify
 from direct.gui.DirectRadioButton import DirectRadioButton
 from direct.showbase.DirectObject import DirectObject
+from panda3d.core import NodePath
 
 from src.TSP import read_tsp
 
@@ -106,6 +107,8 @@ class Mode(DirectObject):
     def generate_buttons(self, _map):
         self.problem_buttons.clear()
         self.notify.debug(f"Generating buttons for {len(self.files)} files.")
+        buttons_holder = base.a2dBottomLeft.attachNewNode("problem_buttons")
+        buttons_holder.setPos(.3,0,0.05)
         for index, file in enumerate(self.files):
             col = index % 3
             row = index // 3
@@ -113,9 +116,11 @@ class Mode(DirectObject):
                 text=file.replace('.tsp', ''),
                 scale=0.07,
                 frameColor=(0.8, 0.8, 0.8, 1),
-                pos=(-1 + col * 0.5, 0, -row * 0.15 - 0.6),
+                # pos=(-1 + col * 0.5, 0, -row * 0.15 - 0.6),
+                pos=(col*0.5,0,row*0.15),
                 variable=[self.last_loaded],
                 value=[file],
+                parent=buttons_holder,
                 extraArgs=[_map, file, f"drb{file}"]
             )
             if file == _map.get_current_loaded_file():

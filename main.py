@@ -33,7 +33,7 @@ class TravelingSalesmanProblem(ShowBase):
         self.disableMouse()
 
         # accept close program
-        self.accept("escape", sys.exit)
+        self.accept("escape", self.userExit)
 
         # modes
         BFMode = BruteForceMode(self.map)
@@ -44,18 +44,26 @@ class TravelingSalesmanProblem(ShowBase):
         self._mode = WOCMode
 
         # modes radio buttons
+        radio_button_node = base.a2dTopRight.attachNewNode("radio_buttons")
+        radio_button_node.setPos(-.5,0,0)
+        radio_button_node.setScale(0.9)
         buttons = [
-            DirectRadioButton(text="Brute Force", scale=0.07, pos=(1, 0, 0.9), variable=[self.mode], value=[BFMode],
-                              command=self.set_mode, extraArgs=[BFMode]),
-            DirectRadioButton(text="Breadth/Depth First Search", scale=0.07, pos=(0.8, 0, 0.75), variable=[self.mode],
-                              value=[FSMode], command=self.set_mode, extraArgs=[FSMode]),
-            DirectRadioButton(text="Closest Edge Insertion", scale=0.07, pos=(0.9, 0, 0.6), variable=[self.mode],
-                              value=[CEMode], command=self.set_mode, extraArgs=[CEMode]),
-            DirectRadioButton(text="Genetic Algorithm", scale=0.07, pos=(0.9, 0, 0.45),
+            DirectRadioButton(text="Brute Force", scale=0.07, pos=(0, 0, -.1), variable=[self.mode], value=[BFMode],
+                              command=self.set_mode, extraArgs=[BFMode],
+                              parent=radio_button_node),
+            DirectRadioButton(text="Breadth/Depth First Search", scale=0.07, pos=(0, 0, -.2), variable=[self.mode],
+                              value=[FSMode], command=self.set_mode, extraArgs=[FSMode],
+                              parent=radio_button_node),
+            DirectRadioButton(text="Closest Edge Insertion", scale=0.07, pos=(0, 0, -.3), variable=[self.mode],
+                              value=[CEMode], command=self.set_mode, extraArgs=[CEMode],
+                              parent=radio_button_node),
+            DirectRadioButton(text="Genetic Algorithm", scale=0.07, pos=(0, 0, -.4),
                             variable=[self.mode],
-                            value=[GAMode], command=self.set_mode, extraArgs=[GAMode]),
-            DirectRadioButton(text="Wisdom of Crowds", scale=0.07, pos=(1, 0, 0.3), variable=[self.mode],
-                              value=[WOCMode], command=self.set_mode, extraArgs=[WOCMode]),
+                            value=[GAMode], command=self.set_mode, extraArgs=[GAMode],
+                              parent=radio_button_node),
+            DirectRadioButton(text="Wisdom of Crowds", scale=0.07, pos=(0, 0, -.5), variable=[self.mode],
+                              value=[WOCMode], command=self.set_mode, extraArgs=[WOCMode],
+                              parent=radio_button_node),
         ]
         for button in buttons:
             button.setOthers(buttons)
