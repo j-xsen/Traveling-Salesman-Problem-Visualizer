@@ -21,6 +21,13 @@ class Greedy(People):
             last_city = route[-1]
             # find nearest unvisited city
             nearest_city = min(unvisited_cities, key=lambda city: distance(last_city.coords, city.coords))
+
+            # five percent chance it choose next nearest city instead
+            if len(unvisited_cities) > 1 and random.random() < 0.05:
+                self.notify.debug("Diverging!!!")
+                sorted_cities = sorted(unvisited_cities, key=lambda city: distance(last_city.coords, city.coords))
+                nearest_city = sorted_cities[1]
+
             route.append(nearest_city)
             unvisited_cities.remove(nearest_city)
         route.append(first_city)

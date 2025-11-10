@@ -5,9 +5,9 @@ from src.bus.distance import distance
 
 
 class People(DirectObject):
-    def __init__(self, name):
+    def __init__(self, name="People"):
         DirectObject.__init__(self)
-        self.notify = directNotify.newCategory("People")
+        self.notify = directNotify.newCategory(name)
         self.name = name
         self.route = []
         self.distance = 0

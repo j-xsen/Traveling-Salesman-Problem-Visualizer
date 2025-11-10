@@ -1,20 +1,16 @@
 import random
 import subprocess
-import sys
-from time import sleep
 
 import numpy
 from direct.directnotify.DirectNotifyGlobal import directNotify
+from direct.gui import DirectGuiGlobals as DGG
 from direct.gui.DirectButton import DirectButton
 from direct.gui.DirectEntry import DirectEntry
 from direct.gui.DirectFrame import DirectFrame
 from direct.gui.DirectLabel import DirectLabel
 from direct.showbase.DirectObject import DirectObject
-from direct.showbase.ShowBase import ShowBase
-from panda3d.core import WindowProperties, NodePath, FrameBufferProperties, ButtonThrower, GraphicsWindow, ButtonHandle
-from panda3d_tools import text_stats
+from panda3d.core import WindowProperties, ButtonHandle
 from scipy.special import betaincinv
-from direct.gui import DirectGuiGlobals as DGG
 
 from src.modes.GeneticAlgorithm.GeneticAlgorithm import CrossoverType
 from src.modes.WisdomOfCrowds.ui.CrowdDisplay import CrowdDisplay
@@ -33,9 +29,55 @@ class CrowdManager(DirectObject):
         self.crowd = []
         self.crowd_size = 10
 
+        self._generated_crowd = False
+        self._generated_lkh = False
+
         self.people_picker = None
         self.crowd_display = None
-        self.accept("close-crowd-manager-window", self.destroy)
+        self.accept("WOCProblemChanged", self.disable_lkh_buttons)
+
+    @property
+    def generated_crowd(self):
+        return self._generated_crowd
+
+    @generated_crowd.setter
+    def generated_crowd(self, val):
+        if val is True:
+            self.notify.debug("Generated crowd")
+            # crowd generated, check if ui exists
+            if len(self.ui) > 0:
+                self.ui[7]["state"] = DGG.NORMAL
+            else:
+                self.notify.warning("UI not built yet, cannot update LKH buttons.")
+        else:
+            self.ui[7]["state"] = DGG.DISABLED
+        self._generated_crowd = val
+
+    @property
+    def generated_lkh(self):
+        return self._generated_lkh
+
+    @generated_lkh.setter
+    def generated_lkh(self, val):
+        if val:
+            self.notify.debug("Generated LKH tour")
+            self.notify.debug(f"Value: {val}")
+            # lkh generated, check if ui exists
+            if len(self.ui) > 0:
+                self.ui[6]["state"] = DGG.NORMAL
+            else:
+                self.notify.warning("UI not built yet, cannot update LKH buttons.")
+        else:
+            self.ui[6]["state"] = DGG.DISABLED
+        self._generated_lkh = val
+
+    def disable_lkh_buttons(self):
+        self.notify.debug("Disabling LKH buttons...")
+        if len(self.ui) == 0:
+            self.notify.warning("UI not built yet, cannot disable LKH buttons.")
+            return
+        self.generated_lkh = False
+        self.generated_crowd = False
 
     def destroy(self):
         self.notify.debug("Destroying Crowd Manager...")
@@ -56,6 +98,9 @@ class CrowdManager(DirectObject):
         self.build_ui()
 
     def adjust_crowd_size(self, text):
+        if len(self.ui) == 0:
+            self.notify.warning("UI not built yet, cannot adjust crowd size.")
+            return
         try:
             size = int(text)
             if size < 1:
@@ -69,68 +114,85 @@ class CrowdManager(DirectObject):
         self.ui[2].enterText(str(self.crowd_size))
 
     def build_ui(self):
+        # base
         frame = DirectFrame(frameColor=(0, 0, 0, 1),
                             frameSize=(0, 1, 0, 1),
                             pos=(0, 0, 0),
                             parent=base.a2dBottomRight)
-        self.ui.append(frame)
 
+        # crowd
         crowd_np = frame.attachNewNode("crowd_np")
         crowd_size_label = DirectLabel(text="Crowd Size:",
-                                       scale=0.07, pos=(-.5,0,.155),
-                                       text_pos=(0,0),
-                                       text_fg=(1,1,1,1),
-                                       frameColor=(0,0,0,0),
+                                       scale=0.07, pos=(-.5, 0, .155),
+                                       text_pos=(0, 0),
+                                       text_fg=(1, 1, 1, 1),
+                                       frameColor=(0, 0, 0, 0),
                                        parent=crowd_np)
-        self.ui.append(crowd_size_label)
         crowd_size = DirectEntry(text="", scale=0.07, initialText=str(self.crowd_size),
                                  parent=crowd_np, pos=(-.3, 0, .14),
-                                 text_pos=(0.15,0.2),
-                                 text_fg=(1,1,1,1), frameSize=(0, 2, 0, 1),
+                                 text_pos=(0.15, 0.2),
+                                 text_fg=(1, 1, 1, 1), frameSize=(0, 2, 0, 1),
                                  frameColor=(1, 1, 1, 0.5), width=2.5,
                                  command=self.adjust_crowd_size)
-        self.ui.append(crowd_size)
 
         make_new_crowd_button = DirectButton(text="Create new Crowd", scale=0.07,
                                              pos=(-.35, 0, .05),
-                                             command=self.generate_crowd,
-                                             frameColor=(
-                                                 (0.8, 0.8, 0.8, 1),  # Normal
-                                                 (0.9, 0.9, 0.9, 1),  # Click
-                                                 (0.7, 0.7, 0.7, 1),  # Hover
-                                                 (0.5, 0.5, 0.5, 1)  # Disabled
-                                             ), parent=frame)
-        self.ui.append(make_new_crowd_button)
+                                             command=self.generate_crowd, parent=frame)
 
-        # show LKH tour button
+        # LKH frame
         lkh_frame = DirectFrame(frameColor=(.5, .5, .5, 1),
                                 relief=DGG.RAISED,
                                 borderWidth=(0.01, 0.01),
                                 frameSize=(-0.3, 0.3, -0.1, 0.1),
                                 pos=(-1.25, 0, .15),
                                 parent=frame)
-        self.ui.append(lkh_frame)
+
         lkh_title = DirectLabel(text="LKH Tour:",
                                 scale=0.07,
                                 text_fg=(1, 1, 1, 1),
                                 frameColor=(0, 0, 0, 0),
                                 pos=(0, 0, .025),
                                 parent=lkh_frame)
-        self.ui.append(lkh_title)
-        show_lkh_tour_button = DirectButton(text="Show", scale=0.07,
-                                             pos=(.16, 0, -.06),
-                                             command=self.show_lkh_tour, parent=lkh_frame)
-        self.ui.append(show_lkh_tour_button)
-        generate_new_lkh_tour_button = DirectButton(text="Generate", scale=0.07,
-                                             pos=(-.11, 0, -.06),
-                                                    extraArgs=["crowd"],
-                                             command=self.run_hlk, parent=lkh_frame)
-        self.ui.append(generate_new_lkh_tour_button)
 
+        show_lkh_tour_button = DirectButton(text="Show", scale=0.07,
+                                            pos=(.16, 0, -.06),
+                                            state=DGG.DISABLED,
+                                            frameColor=(
+                                                (0.8, 0.8, 0.8, 1),  # Normal
+                                                (0.9, 0.9, 0.9, 1),  # Click
+                                                (0.7, 0.7, 0.7, 1),  # Hover
+                                                (0.5, 0.5, 0.5, 1)  # Disabled
+                                            ),
+                                            command=self.show_lkh_tour, parent=lkh_frame)
+
+        generate_new_lkh_tour_button = DirectButton(text="Generate", scale=0.07,
+                                                    pos=(-.11, 0, -.06),
+                                                    extraArgs=["crowd"],
+                                                    state=DGG.DISABLED,
+                                                    frameColor=(
+                                                        (0.8, 0.8, 0.8, 1),  # Normal
+                                                        (0.9, 0.9, 0.9, 1),  # Click
+                                                        (0.7, 0.7, 0.7, 1),  # Hover
+                                                        (0.5, 0.5, 0.5, 1)  # Disabled
+                                                    ),
+                                                    command=self.run_lkh, parent=lkh_frame)
+
+        # widgets
         self.people_picker = PeoplePicker(frame)
         self.crowd_display = CrowdDisplay(self.crowd, frame)
-        self.ui.append(self.crowd_display)
-        self.ui.append(self.people_picker)
+
+        # append
+        self.ui.append(frame)                           # 0
+        self.ui.append(crowd_size_label)                # 1
+        self.ui.append(crowd_size)                      # 2
+        self.ui.append(make_new_crowd_button)           # 3
+        self.ui.append(lkh_frame)                       # 4
+        self.ui.append(lkh_title)                       # 5
+        self.ui.append(show_lkh_tour_button)            # 6
+        self.ui.append(generate_new_lkh_tour_button)    # 7
+
+        self.ui.append(self.crowd_display)              # 8
+        self.ui.append(self.people_picker)              # 9-
 
     def show_lkh_tour(self):
         self.notify.debug("Showing LKH Tour...")
@@ -153,33 +215,40 @@ class CrowdManager(DirectObject):
                 break
             if reading_tour:
                 if line.isdigit():
-                    city_index = int(line) - 1
+                    city_index = int(line)
                     tour.append(city_index)
         self.notify.debug(f"Read tour: {tour}")
         tour.append(tour[0])
         self.show_route(tour)
 
-    def run_hlk(self, name):
+    def run_lkh(self, name):
         subprocess.run(["LKH", f"{matrix_storage_location}{name}.par"], check=True)
+        self.generated_lkh = True
 
     def show_route(self, route):
         base.map.reset()
         self.notify.debug(f"Showing route : {route}")
+        first = None
         for stop in route:
+            if not first:
+                first = stop
             base.map.select_city(stop)
+        base.map.select_city(first)
 
     def generate_crowd(self):
         self.notify.debug("Making new crowd...")
+        self.disable_lkh_buttons()
         self.crowd = []
         for _ in range(self.crowd_size):
             person = self.people_picker.pick_a_person()
             self.crowd.append(person)
         self.crowd_display.update_display(self.crowd)
+        self.generated_crowd = True
         agreement_matrix = self.create_agreement_matrix()
         # create files
         cost_matrix_to_tsp("crowd", agreement_matrix)
-        create_parameter_file("crowd")
-        self.run_hlk("crowd")
+        create_par_file = create_parameter_file("crowd")
+        # self.run_lkh("crowd")
 
     def create_agreement_matrix(self):
         self.notify.debug("Creating agreement matrix...")
@@ -191,12 +260,12 @@ class CrowdManager(DirectObject):
         for i in range(size):
             route = self.crowd[i].route
             for j in range(size):
-                connection_start = int(route[j].get_name()[5:])-1
+                connection_start = int(route[j].get_name()[5:]) - 1
                 if j == len(route) - 1:
-                    connection_end = int(route[0].get_name()[5:])-1
+                    connection_end = int(route[0].get_name()[5:]) - 1
                 else:
-                    connection_end = int(route[j+1].get_name()[5:])-1
-                connections+=1
+                    connection_end = int(route[j + 1].get_name()[5:]) - 1
+                connections += 1
                 # matrix[min(connection_start, connection_end)][max(connection_start, connection_end)] += 1
                 matrix[connection_start][connection_end] += 1
                 matrix[connection_end][connection_start] += 1
@@ -207,9 +276,9 @@ class CrowdManager(DirectObject):
         # power transform
         b1 = b2 = 3
         eps = 1e-12
-        A_clip = numpy.clip(agreement, eps, 1.0-eps)
+        A_clip = numpy.clip(agreement, eps, 1.0 - eps)
         C_beta = 1.0 - betaincinv(b1, b2, A_clip)
-        C_int = numpy.round(C_beta*100000).astype(int)
+        C_int = numpy.round(C_beta * 100000).astype(int)
         return C_int
 
     def generate_child(self, parent_list):
@@ -231,7 +300,7 @@ class CrowdManager(DirectObject):
             start = random.randint(0, len(parent1.route) - 3)
             end = random.randint(start + 1, len(parent1.route) - 1)
             self.notify.debug(f"Selected slice from {start} to {end} for crossover.")
-            child_route = [None]*(len(parent2.route)-1)  # create empty route
+            child_route = [None] * (len(parent2.route) - 1)  # create empty route
             # copy segment from parent1
             for i in range(start, end):
                 child_route[i] = parent1.route[i]
@@ -251,7 +320,10 @@ class CrowdManager(DirectObject):
 
         return child_route
 
+
 matrix_storage_location = "results/WOC/LKH/"
+
+
 def cost_matrix_to_tsp(filename, cost_matrix):
     with open(f"{matrix_storage_location}{filename}.tsp", 'w') as f:
         size = cost_matrix.shape[0]
@@ -266,8 +338,10 @@ def cost_matrix_to_tsp(filename, cost_matrix):
             f.write(row + '\n')
         f.write("EOF\n")
 
+
 def create_parameter_file(filename):
     with open(f"{matrix_storage_location}{filename}.par", 'w') as f:
         f.write(f"PROBLEM_FILE = {matrix_storage_location}{filename}.tsp\n")
         f.write(f"OUTPUT_TOUR_FILE = {matrix_storage_location}{filename}.tour\n")
         f.write("RUNS = 1\n")
+    return True
