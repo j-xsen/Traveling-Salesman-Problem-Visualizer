@@ -1,6 +1,7 @@
 from direct.directnotify.DirectNotifyGlobal import directNotify
 
 from src.modes.Mode import Mode, ProblemType
+from src.modes.WisdomOfCrowds.ui.CrowdDisplay import CrowdDisplay
 from src.modes.WisdomOfCrowds.ui.CrowdManager import CrowdManager
 
 
@@ -16,9 +17,6 @@ class WisdomOfCrowds(Mode):
 
     def open_crowd_manager(self):
         self.crowd_manager.open()
-
-    def build_crowd(self):
-        self.notify.debug("Building crowd...")
 
     def on_mouse_click(self):
         pass

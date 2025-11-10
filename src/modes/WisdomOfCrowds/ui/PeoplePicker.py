@@ -17,9 +17,9 @@ class PeoplePicker(NodePath):
         # base node
         self.frame = DirectFrame(frameColor=(1, 1, 1, 1),
                                  frameSize=(-.25, .4, -.1, .1),
-                                    pos=(-.45, 0, .35), borderWidth=(.01, .01),
+                                 pos=(-.45, 0, .35), borderWidth=(.01, .01),
                                  relief=DGG.RAISED,
-                                 parent=_parent,)
+                                 parent=_parent, )
 
         title = DirectLabel(text="Demographics:",
                             scale=0.05,
@@ -34,18 +34,28 @@ class PeoplePicker(NodePath):
     def gather_all_people(self):
         dir_path = f"src/modes/WisdomOfCrowds/People"
         if not os.path.exists(dir_path):
-                self.notify.warning(f"Directory {dir_path} does not exist.")
-                return
+            self.notify.warning(f"Directory {dir_path} does not exist.")
+            return
         for file in os.listdir(dir_path):
-            if not file.startswith("Person"):
+            if not file.startswith("People") and file.endswith(".py"):
                 self.all_people.append(file.replace('.py', ''))
         for p in self.all_people:
             self.notify.debug(f"Found person: {p} index: {self.all_people.index(p)}")
             # create button
             person_button = DirectCheckButton(frameColor=(0.8, 0.8, 0.8, 1),
-                                          text=p,
-                                          scale=0.05,
-                                          pos=(.25 - self.all_people.index(p) * 0.15, 0, 0),
-                                          relief=DGG.RAISED,
-                                          borderWidth=(.005, .005),
-                                          parent=self.frame)
+                                              text=p,
+                                              scale=0.05,
+                                              pos=(.25 - self.all_people.index(p) * 0.15, 0, 0),
+                                              relief=DGG.RAISED,
+                                              borderWidth=(.005, .005),
+                                              parent=self.frame,
+                                              indicatorValue=True)
+
+    def pick_a_person(self):
+        import random
+        choice = random.choice(self.all_people)
+        self.notify.debug(f"Randomly picked person: {choice}")
+        if choice=="Greedy":
+            from src.modes.WisdomOfCrowds.People.Greedy import Greedy
+            choice = Greedy()
+        return choice
