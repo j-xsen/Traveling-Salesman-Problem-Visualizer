@@ -1,3 +1,5 @@
+import uuid
+
 from direct.directnotify.DirectNotifyGlobal import directNotify
 from direct.showbase.DirectObject import DirectObject
 
@@ -11,6 +13,7 @@ class People(DirectObject):
         self.name = name
         self.route = []
         self.distance = 0
+        self.tag = uuid.uuid4()
         self.generate_route()
         self.calculate_distance()
 

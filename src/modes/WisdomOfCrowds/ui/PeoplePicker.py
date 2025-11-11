@@ -43,7 +43,7 @@ class PeoplePicker(NodePath):
             person_button = DirectCheckButton(frameColor=(0.8, 0.8, 0.8, 1),
                                               text=p,
                                               scale=0.05,
-                                              pos=(.25 - self.all_people.index(p) * 0.15, 0, 0),
+                                              pos=(.25 - self.all_people.index(p) * 0.3, 0, 0),
                                               relief=DGG.RAISED,
                                               borderWidth=(.005, .005),
                                               parent=self.frame,
@@ -56,4 +56,7 @@ class PeoplePicker(NodePath):
         if choice == "Greedy":
             from src.modes.WisdomOfCrowds.People.Greedy import Greedy
             choice = Greedy()
+        elif choice == "Random":
+            from src.modes.WisdomOfCrowds.People.Random import Random
+            choice = Random()
         return choice

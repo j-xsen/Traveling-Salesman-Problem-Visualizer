@@ -12,7 +12,8 @@ from direct.showbase.DirectObject import DirectObject
 from panda3d.core import WindowProperties, ButtonHandle
 from scipy.special import betaincinv
 
-from src.modes.GeneticAlgorithm.GeneticAlgorithm import CrossoverType
+from src.modes.GeneticAlgorithm.GeneticAlgorithm import CrossoverType, MutationType, mutate_child
+from src.modes.WisdomOfCrowds.People.People import People
 from src.modes.WisdomOfCrowds.ui.CrowdDisplay import CrowdDisplay
 from src.modes.WisdomOfCrowds.ui.PeoplePicker import PeoplePicker
 
@@ -271,7 +272,6 @@ class CrowdManager(DirectObject):
     def show_lkh_tour(self):
         self.notify.debug("Showing LKH Tour...")
         tour = self.read_lkh_tour()
-        self.notify.debug(f"Read tour: {tour}")
         tour.append(tour[0])
         self.show_route(tour)
 
@@ -306,22 +306,19 @@ class CrowdManager(DirectObject):
         for _ in range(self.crowd_size):
             person = self.people_picker.pick_a_person()
             crowd.append(person)
-        self.crowd_display.update_display(crowd)
+        self.crowd_display.edit_crowd(crowd)
         self.generated_crowd = True
         self.add_generation(crowd)
         self.refresh_lkh_tour()
 
     def create_agreement_matrix(self):
         self.notify.debug("Creating agreement matrix...")
-        print(f"Generations: {self.generations}")
         route_size = len(base.map.cities)
         self.notify.debug(f"Crowd size: {self.crowd_size}, Route size: {route_size}")
         connections = 0
         matrix = numpy.array([[0 for _ in range(route_size)] for _ in range(route_size)], dtype=float)
         for i in range(self.crowd_size):
             route = self.generations[self.generation][i].route
-            self.notify.debug(f"Processing route: {[city.get_name() for city in route]}")
-            self.notify.debug(f"Route: {route}")
             for j in range(route_size):
                 connection_start = int(route[j].get_name()[5:]) - 1
                 if j == len(route) - 1:
@@ -329,7 +326,6 @@ class CrowdManager(DirectObject):
                 else:
                     connection_end = int(route[j + 1].get_name()[5:]) - 1
                 connections += 1
-                # matrix[min(connection_start, connection_end)][max(connection_start, connection_end)] += 1
                 matrix[connection_start][connection_end] += 1
                 matrix[connection_end][connection_start] += 1
         # agreement
@@ -351,11 +347,16 @@ class CrowdManager(DirectObject):
         if not parent1.route or not parent2.route:
             self.notify.error("One of the parents has an empty route.")
             return []
+        # fix if loop
+        # if parent1.route[0] == parent1.route[-1]:
+        #     self.notify.debug("Dropping duplicate end city from parent1 route.")
+        #     parent1.route = parent1.route[:-1]
+        # if parent2.route[0] == parent2.route[-1]:
+        #     self.notify.debug("Dropping duplicate end city from parent2 route.")
+        #     parent2.route = parent2.route[:-1]
         if len(parent1.route) != len(parent2.route) != route_length:
             self.notify.error(f"Parent routes are of different lengths.\nParent1 {parent1.route}\nParent2 {parent2.route}")
             return []
-        self.notify.debug(f"Parent1 {parent1.route}")
-        self.notify.debug(f"Parent2 {parent2.route}")
 
         crossover_type = random.choice(list(CrossoverType))
         child_route = None
@@ -389,7 +390,12 @@ class CrowdManager(DirectObject):
                         used.add(parent2.route[p2_index])
                         p2_index += 1
             self.notify.debug(f"Generated child route: {child_route}")
-        child_route.append(child_route[0])  # return to start
+        if child_route[0] != child_route[-1]:
+            child_route.append(child_route[0])  # return to start
+
+        mutation_type = random.choice(list(MutationType))
+        mutate_child(child_route, mutation_type)
+
         return child_route
 
     def refresh_lkh_tour(self):
@@ -403,20 +409,19 @@ class CrowdManager(DirectObject):
         # setup
         self.notify.debug("Creating next generation...")
         current_generation = self.generations[-1]
-        self.notify.debug(f"Current generation: {current_generation}")
         sorted_gen = sorted(current_generation, key=lambda person: person.distance)
         parents = sorted_gen[:max(1, self.crowd_size // 3)]  # top
         # add LKH
         self.refresh_lkh_tour()
-        lkh_person = self.people_picker.pick_a_person()
+        lkh_person = People()
         lkh_person.load_route(self.read_lkh_tour())
         parents.append(lkh_person)
 
         # next gen
         next_generation = []
-        while len(next_generation) < self.crowd_size-1:
+        while len(next_generation) < self.crowd_size:
             child_route = self.generate_child(parents)
-            child_person = self.people_picker.pick_a_person()
+            child_person = People()
             child_person.route = child_route
             child_person.calculate_distance()
             next_generation.append(child_person)
@@ -424,7 +429,7 @@ class CrowdManager(DirectObject):
 
         # update text
         self.ui[9]['text'] = f"Generation: {len(self.generations)}"
-        self.crowd_display.update_display(next_generation)
+        self.crowd_display.edit_crowd(next_generation)
         self.notify.debug("Next generation created.")
 
 
@@ -447,7 +452,6 @@ def cost_matrix_to_tsp(filename, cost_matrix):
 
 
 def create_parameter_file(filename,runs=1):
-    print(f"Runs: {runs}")
     with open(f"{matrix_storage_location}{filename}.par", 'w') as f:
         f.write(f"PROBLEM_FILE = {matrix_storage_location}{filename}.tsp\n")
         f.write(f"OUTPUT_TOUR_FILE = {matrix_storage_location}{filename}.tour\n")
