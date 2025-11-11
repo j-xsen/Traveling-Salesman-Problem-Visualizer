@@ -20,6 +20,14 @@ class People(DirectObject):
     def generate_route(self):
         pass
 
+    def load_route(self, rte):
+        self.notify.debug(f"Loading rte: {rte}")
+        city_copy = base.map.cities[:]
+        self.route = []
+        for stop in rte:
+            self.route.append(city_copy[stop-1])
+        self.calculate_distance()
+
     def calculate_distance(self):
         total_distance = 0
         for i in range(len(self.route) - 1):

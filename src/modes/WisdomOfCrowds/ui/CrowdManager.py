@@ -28,7 +28,7 @@ class CrowdManager(DirectObject):
         # crowd
         self.generations = []
         self.generation = 0
-        self.crowd_size = 100
+        self.crowd_size = 10
 
         self._generated_crowd = False
         self._generated_lkh = False
@@ -241,8 +241,8 @@ class CrowdManager(DirectObject):
         self.ui.append(self.crowd_display)              #
         self.ui.append(self.people_picker)              #
 
-    def show_lkh_tour(self):
-        self.notify.debug("Showing LKH Tour...")
+    def read_lkh_tour(self):
+        self.notify.debug("Reading LKH Tour...")
         tour_file = f"{matrix_storage_location}crowd.tour"
         self.notify.debug(f"Reading tour from {tour_file}...")
         try:
@@ -250,7 +250,7 @@ class CrowdManager(DirectObject):
                 lines = f.readlines()
         except FileNotFoundError:
             self.notify.error(f"Tour file {tour_file} not found. Please generate a crowd first.")
-            return
+            return []
         tour = []
         reading_tour = False
         for line in lines:
@@ -258,12 +258,19 @@ class CrowdManager(DirectObject):
             if line == "TOUR_SECTION":
                 reading_tour = True
                 continue
-            if line == "EOF":
+            if line == "EOF" or line == "-1":
                 break
             if reading_tour:
                 if line.isdigit():
                     city_index = int(line)
                     tour.append(city_index)
+        self.notify.debug(f"Read tour: {tour}")
+        tour.append(tour[0])
+        return tour
+
+    def show_lkh_tour(self):
+        self.notify.debug("Showing LKH Tour...")
+        tour = self.read_lkh_tour()
         self.notify.debug(f"Read tour: {tour}")
         tour.append(tour[0])
         self.show_route(tour)
@@ -302,11 +309,7 @@ class CrowdManager(DirectObject):
         self.crowd_display.update_display(crowd)
         self.generated_crowd = True
         self.add_generation(crowd)
-        agreement_matrix = self.create_agreement_matrix()
-        # create files
-        cost_matrix_to_tsp("crowd", agreement_matrix)
-        create_par_file = create_parameter_file("crowd", runs=len(self.generations))
-        # self.run_lkh("crowd")
+        self.refresh_lkh_tour()
 
     def create_agreement_matrix(self):
         self.notify.debug("Creating agreement matrix...")
@@ -389,23 +392,36 @@ class CrowdManager(DirectObject):
         child_route.append(child_route[0])  # return to start
         return child_route
 
+    def refresh_lkh_tour(self):
+        agreement_matrix = self.create_agreement_matrix()
+        # create files
+        cost_matrix_to_tsp("crowd", agreement_matrix)
+        create_par_file = create_parameter_file("crowd", runs=len(self.generations)*5)
+        self.run_lkh("crowd")
+
     def create_next_generation(self):
+        # setup
         self.notify.debug("Creating next generation...")
         current_generation = self.generations[-1]
         self.notify.debug(f"Current generation: {current_generation}")
         sorted_gen = sorted(current_generation, key=lambda person: person.distance)
-        parents = sorted_gen[:max(1, self.crowd_size // 2)]  # top 20%
+        parents = sorted_gen[:max(1, self.crowd_size // 3)]  # top
+        # add LKH
+        self.refresh_lkh_tour()
+        lkh_person = self.people_picker.pick_a_person()
+        lkh_person.load_route(self.read_lkh_tour())
+        parents.append(lkh_person)
+
+        # next gen
         next_generation = []
-        while len(next_generation) <= self.crowd_size:
+        while len(next_generation) < self.crowd_size-1:
             child_route = self.generate_child(parents)
             child_person = self.people_picker.pick_a_person()
             child_person.route = child_route
             child_person.calculate_distance()
             next_generation.append(child_person)
-        # add LKH
-        lkh_person = self.people_picker.pick_a_person()
-        lkh_person.route = []
         self.generations.append(next_generation)
+
         # update text
         self.ui[9]['text'] = f"Generation: {len(self.generations)}"
         self.crowd_display.update_display(next_generation)
