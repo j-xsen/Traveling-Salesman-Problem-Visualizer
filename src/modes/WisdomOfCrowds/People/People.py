@@ -33,7 +33,10 @@ class People(DirectObject):
 
     def calculate_distance(self):
         total_distance = 0
-        for i in range(len(self.route) - 1):
-            total_distance += distance(self.route[i].coords, self.route[i + 1].coords)
+        for i in range(len(self.route)):
+            if i == len(self.route) - 1:
+                total_distance += distance(self.route[i].coords, self.route[0].coords)
+            else:
+                total_distance += distance(self.route[i].coords, self.route[i + 1].coords)
         self.distance = total_distance
         return self.distance

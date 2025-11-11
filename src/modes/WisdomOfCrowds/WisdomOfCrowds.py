@@ -7,7 +7,8 @@ from src.modes.WisdomOfCrowds.ui.CrowdManager import CrowdManager
 class WisdomOfCrowds(Mode):
     def __init__(self, _show_base):
         super().__init__(ProblemType.WISDOM_OF_CROWDS, 'Random11.tsp', _show_base.map, name="WisdomOfCrowds")
-        self.crowd_manager = CrowdManager()
+        crowd_size = 50
+        self.crowd_manager = CrowdManager(crowd_size)
 
     def load_problem(self, _map, file, src=""):
         hold=False

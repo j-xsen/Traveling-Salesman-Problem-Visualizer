@@ -21,7 +21,7 @@ bh = ButtonHandle("b")
 
 
 class CrowdManager(DirectObject):
-    def __init__(self):
+    def __init__(self, crowd_size=10, elite_percent=0.2):
         DirectObject.__init__(self)
         self.notify = directNotify.newCategory("CrowdManager")
         self.ui = []
@@ -29,7 +29,8 @@ class CrowdManager(DirectObject):
         # crowd
         self.generations = []
         self.generation = 0
-        self.crowd_size = 10
+        self.crowd_size = crowd_size
+        self.elite_percent = elite_percent
 
         self._generated_crowd = False
         self._generated_lkh = False
@@ -218,11 +219,22 @@ class CrowdManager(DirectObject):
                                ),
                                  command=self.create_next_generation,
                                  state=DGG.DISABLED,
-                               pos=(0, 0, -.1), parent=gen_frame)
+                               pos=(-.05, 0, -.1), parent=gen_frame)
+        gen_fifty = DirectButton(text="50", scale=0.07,
+                                 frameColor=(
+                                     (0.8, 0.8, 0.8, 1),  # Normal
+                                     (0.9, 0.9, 0.9, 1),  # Click
+                                     (0.7, 0.7, 0.7, 1),  # Hover
+                                     (0.5, 0.5, 0.5, 1)  # Disabled
+                                 ),
+                                    command=self.multiple_gens,
+                                    extraArgs=[50],
+                                    state=DGG.DISABLED,
+                                    pos=(.175, 0, -.1), parent=gen_frame)
 
         # widgets
         self.people_picker = PeoplePicker(frame)
-        self.crowd_display = CrowdDisplay(frame)
+        self.crowd_display = CrowdDisplay(frame,self.elite_percent)
 
         # append
         self.ui.append(frame)                           # 0
@@ -238,9 +250,14 @@ class CrowdManager(DirectObject):
         self.ui.append(gen_left)                        # 10
         self.ui.append(gen_right)                       # 11
         self.ui.append(gen_new)                         # 12
+        self.ui.append(gen_fifty)                       # 13
 
         self.ui.append(self.crowd_display)              #
         self.ui.append(self.people_picker)              #
+
+    def multiple_gens(self, num):
+        for _ in range(num):
+            self.create_next_generation()
 
     def read_lkh_tour(self):
         self.notify.debug("Reading LKH Tour...")
@@ -266,13 +283,11 @@ class CrowdManager(DirectObject):
                     city_index = int(line)
                     tour.append(city_index)
         self.notify.debug(f"Read tour: {tour}")
-        tour.append(tour[0])
         return tour
 
     def show_lkh_tour(self):
         self.notify.debug("Showing LKH Tour...")
         tour = self.read_lkh_tour()
-        tour.append(tour[0])
         self.show_route(tour)
 
     def run_lkh(self, name):
@@ -297,6 +312,7 @@ class CrowdManager(DirectObject):
         self.ui[9]['text'] = f"Generation: {len(self.generations)}"
         # enable generate button
         self.ui[12]['state'] = DGG.NORMAL
+        self.ui[13]['state'] = DGG.NORMAL
 
     def generate_crowd(self):
         self.notify.debug("Making new crowd...")
@@ -343,18 +359,18 @@ class CrowdManager(DirectObject):
     def generate_child(self, parent_list):
         self.notify.debug("Generating new child...")
         parent1, parent2 = random.choices(parent_list, k=2)  # select two
-        route_length = len(base.map.cities) + 1
+        route_length = len(base.map.cities)
         if not parent1.route or not parent2.route:
             self.notify.error("One of the parents has an empty route.")
             return []
         # fix if loop
-        # if parent1.route[0] == parent1.route[-1]:
-        #     self.notify.debug("Dropping duplicate end city from parent1 route.")
-        #     parent1.route = parent1.route[:-1]
-        # if parent2.route[0] == parent2.route[-1]:
-        #     self.notify.debug("Dropping duplicate end city from parent2 route.")
-        #     parent2.route = parent2.route[:-1]
-        if len(parent1.route) != len(parent2.route) != route_length:
+        if parent1.route[0] == parent1.route[-1]:
+            self.notify.debug("Dropping duplicate end city from parent1 route.")
+            parent1.route = parent1.route[:-1]
+        if parent2.route[0] == parent2.route[-1]:
+            self.notify.debug("Dropping duplicate end city from parent2 route.")
+            parent2.route = parent2.route[:-1]
+        if len(parent1.route) != route_length or len(parent2.route) != route_length:
             self.notify.error(f"Parent routes are of different lengths.\nParent1 {parent1.route}\nParent2 {parent2.route}")
             return []
 
@@ -373,9 +389,9 @@ class CrowdManager(DirectObject):
             start = random.randint(0, route_length - 3)
             end = random.randint(start + 1, route_length - 1)
             self.notify.debug(f"Selected slice from {start} to {end} for crossover.")
-            child_route = [None] * (route_length - 1)  # create empty route
+            child_route = [None] * (route_length)  # create empty route
             # copy segment from parent1
-            for i in range(start, end):
+            for i in range(start, end+1):
                 child_route[i] = parent1.route[i]
             self.notify.debug(f"Child route after copying from parent1: {child_route}")
             # fill in remainder from parent2
@@ -390,8 +406,9 @@ class CrowdManager(DirectObject):
                         used.add(parent2.route[p2_index])
                         p2_index += 1
             self.notify.debug(f"Generated child route: {child_route}")
-        if child_route[0] != child_route[-1]:
-            child_route.append(child_route[0])  # return to start
+        if len(child_route) != route_length:
+            self.notify.error(f"Generated child route of incorrect length: {len(child_route)} expected {route_length}.\nRoute: {child_route}")
+            return []
 
         mutation_type = random.choice(list(MutationType))
         mutate_child(child_route, mutation_type)
@@ -410,7 +427,7 @@ class CrowdManager(DirectObject):
         self.notify.debug("Creating next generation...")
         current_generation = self.generations[-1]
         sorted_gen = sorted(current_generation, key=lambda person: person.distance)
-        parents = sorted_gen[:max(1, self.crowd_size // 3)]  # top
+        parents = sorted_gen[:max(1, int(self.crowd_size * self.elite_percent))]  # top
         # add LKH
         self.refresh_lkh_tour()
         lkh_person = People()

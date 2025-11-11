@@ -8,12 +8,13 @@ color = 0.8
 
 
 class CrowdDisplay(DirectObject):
-    def __init__(self, parent):
+    def __init__(self, parent, elite_percent=0.2):
         DirectObject.__init__(self)
         self.notify = directNotify.newCategory("CrowdDisplay")
         self._page_number = 0
         self.crowd_per_page = 20
         self.crowd = []
+        self.elite_percent = elite_percent
         self.left_button = None
         self.right_button = None
         self.node = DirectFrame(frameColor=(color, color, color, 1),
@@ -82,30 +83,27 @@ class CrowdDisplay(DirectObject):
         if not self.crowd:
             self.notify.debug("No crowd to scroll.")
             return
-        self.notify.debug("Scrolling left...")
         if self.page_number == 0:
             self.notify.debug("Already at first page, cannot scroll left.")
             return
+        self.notify.debug("Scrolling left...")
         self.page_number -= 1
-        if self.page_number == 0:
-            self.notify.debug("Reached first page.")
-            print(type(self.node.getChild(0)))
 
     def scroll_right(self):
         if not self.crowd:
             self.notify.debug("No crowd to scroll.")
             return
-        self.notify.debug("Scrolling right...")
-        if self.page_number == len(self.crowd) / self.crowd_per_page - 1:
+        if self.page_number >= len(self.crowd) / self.crowd_per_page - 1:
             self.notify.debug("Already at last page, cannot scroll right.")
             return
+        self.notify.debug("Scrolling right...")
         self.page_number += 1
 
     def update_display(self):
         self.notify.debug("Updating crowd display...")
         sorted_crowd = sorted(self.crowd, key=lambda person: person.distance)
         tags = []
-        for c in sorted_crowd[:3]:
+        for c in sorted_crowd[:max(1, int(len(self.crowd) * self.elite_percent))]:
             tags.append(str(c.tag))
 
         # colors
@@ -138,5 +136,10 @@ class CrowdDisplay(DirectObject):
     def show_individual(self, person):
         self.notify.debug(f"Showing individual: {person}")
         base.map.reset()
+        first = None
         for stop in person.route:
+            if not first:
+                first = stop
             base.map.select_city(stop.get_name()[5:])
+        base.map.select_city(first.get_name()[5:])
+

@@ -1,5 +1,5 @@
 PROBLEM_FILE = results/WOC/LKH/crowd.tsp
 OUTPUT_TOUR_FILE = results/WOC/LKH/crowd.tour
-RUNS = 13
+RUNS = 101
 KICKS = 4
-SEED = 19153
+SEED = 58854
