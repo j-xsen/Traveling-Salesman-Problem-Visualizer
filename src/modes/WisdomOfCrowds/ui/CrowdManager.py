@@ -26,8 +26,9 @@ class CrowdManager(DirectObject):
         self.ui = []
 
         # crowd
-        self.crowd = []
-        self.crowd_size = 10
+        self.generations = []
+        self.generation = 0
+        self.crowd_size = 100
 
         self._generated_crowd = False
         self._generated_lkh = False
@@ -177,9 +178,50 @@ class CrowdManager(DirectObject):
                                                     ),
                                                     command=self.run_lkh, parent=lkh_frame)
 
+        # generation frame
+        gen_frame = DirectFrame(frameColor=(.7, .7, .7, 1),
+                                relief=DGG.RAISED,
+                                 borderWidth=(0.01, 0.01),
+                                 frameSize=(-0.3, 0.3, -0.1, 0.1),
+                                 pos=(-1.5, 0, .4),
+                                 parent=frame)
+        gen_text = DirectLabel(text="Generation: 0",
+                                 scale=0.07,
+                                    frameColor=(0, 0, 0, 0),
+                                    pos=(0, 0, 0),
+                                    parent=gen_frame)
+        gen_left = DirectButton(text="<", scale=0.1,
+                                frameColor=(
+                                    (0.8, 0.8, 0.8, 1),  # Normal
+                                    (0.9, 0.9, 0.9, 1),  # Click
+                                    (0.7, 0.7, 0.7, 1),  # Hover
+                                    (0.5, 0.5, 0.5, 1)  # Disabled
+                                ),
+                                state=DGG.DISABLED,
+                                pos=(-.3, 0, -.02),parent=gen_frame)
+        gen_right = DirectButton(text=">", scale=0.1,
+                                 frameColor=(
+                                     (0.8, 0.8, 0.8, 1),  # Normal
+                                     (0.9, 0.9, 0.9, 1),  # Click
+                                     (0.7, 0.7, 0.7, 1),  # Hover
+                                     (0.5, 0.5, 0.5, 1)  # Disabled
+                                 ),
+                                 state=DGG.DISABLED,
+                                 pos=(.3, 0, -.02), parent=gen_frame)
+        gen_new = DirectButton(text="Generate", scale=0.07,
+                               frameColor=(
+                                   (0.8, 0.8, 0.8, 1),  # Normal
+                                   (0.9, 0.9, 0.9, 1),  # Click
+                                   (0.7, 0.7, 0.7, 1),  # Hover
+                                   (0.5, 0.5, 0.5, 1)  # Disabled
+                               ),
+                                 command=self.create_next_generation,
+                                 state=DGG.DISABLED,
+                               pos=(0, 0, -.1), parent=gen_frame)
+
         # widgets
         self.people_picker = PeoplePicker(frame)
-        self.crowd_display = CrowdDisplay(self.crowd, frame)
+        self.crowd_display = CrowdDisplay(frame)
 
         # append
         self.ui.append(frame)                           # 0
@@ -190,9 +232,14 @@ class CrowdManager(DirectObject):
         self.ui.append(lkh_title)                       # 5
         self.ui.append(show_lkh_tour_button)            # 6
         self.ui.append(generate_new_lkh_tour_button)    # 7
+        self.ui.append(gen_frame)                       # 8
+        self.ui.append(gen_text)                        # 9
+        self.ui.append(gen_left)                        # 10
+        self.ui.append(gen_right)                       # 11
+        self.ui.append(gen_new)                         # 12
 
-        self.ui.append(self.crowd_display)              # 8
-        self.ui.append(self.people_picker)              # 9-
+        self.ui.append(self.crowd_display)              #
+        self.ui.append(self.people_picker)              #
 
     def show_lkh_tour(self):
         self.notify.debug("Showing LKH Tour...")
@@ -222,6 +269,7 @@ class CrowdManager(DirectObject):
         self.show_route(tour)
 
     def run_lkh(self, name):
+        create_parameter_file(name, runs=len(self.generations))
         subprocess.run(["LKH", f"{matrix_storage_location}{name}.par"], check=True)
         self.generated_lkh = True
 
@@ -235,31 +283,43 @@ class CrowdManager(DirectObject):
             base.map.select_city(stop)
         base.map.select_city(first)
 
+    def add_generation(self, crowd):
+        self.notify.debug("Adding generation")
+        self.generations.append(crowd)
+        # update text
+        self.ui[9]['text'] = f"Generation: {len(self.generations)}"
+        # enable generate button
+        self.ui[12]['state'] = DGG.NORMAL
+
     def generate_crowd(self):
         self.notify.debug("Making new crowd...")
         self.disable_lkh_buttons()
-        self.crowd = []
+        self.generations.clear()
+        crowd = []
         for _ in range(self.crowd_size):
             person = self.people_picker.pick_a_person()
-            self.crowd.append(person)
-        self.crowd_display.update_display(self.crowd)
+            crowd.append(person)
+        self.crowd_display.update_display(crowd)
         self.generated_crowd = True
+        self.add_generation(crowd)
         agreement_matrix = self.create_agreement_matrix()
         # create files
         cost_matrix_to_tsp("crowd", agreement_matrix)
-        create_par_file = create_parameter_file("crowd")
+        create_par_file = create_parameter_file("crowd", runs=len(self.generations))
         # self.run_lkh("crowd")
 
     def create_agreement_matrix(self):
         self.notify.debug("Creating agreement matrix...")
-        size = len(self.crowd)
+        print(f"Generations: {self.generations}")
         route_size = len(base.map.cities)
-        self.notify.debug(f"Crowd size: {size}, Route size: {route_size}")
+        self.notify.debug(f"Crowd size: {self.crowd_size}, Route size: {route_size}")
         connections = 0
         matrix = numpy.array([[0 for _ in range(route_size)] for _ in range(route_size)], dtype=float)
-        for i in range(size):
-            route = self.crowd[i].route
-            for j in range(size):
+        for i in range(self.crowd_size):
+            route = self.generations[self.generation][i].route
+            self.notify.debug(f"Processing route: {[city.get_name() for city in route]}")
+            self.notify.debug(f"Route: {route}")
+            for j in range(route_size):
                 connection_start = int(route[j].get_name()[5:]) - 1
                 if j == len(route) - 1:
                     connection_end = int(route[0].get_name()[5:]) - 1
@@ -270,7 +330,7 @@ class CrowdManager(DirectObject):
                 matrix[connection_start][connection_end] += 1
                 matrix[connection_end][connection_start] += 1
         # agreement
-        agreement = matrix / size
+        agreement = matrix / self.crowd_size
         agreement = numpy.clip(agreement, 0.0, 1.0)
 
         # power transform
@@ -284,12 +344,21 @@ class CrowdManager(DirectObject):
     def generate_child(self, parent_list):
         self.notify.debug("Generating new child...")
         parent1, parent2 = random.choices(parent_list, k=2)  # select two
+        route_length = len(base.map.cities) + 1
+        if not parent1.route or not parent2.route:
+            self.notify.error("One of the parents has an empty route.")
+            return []
+        if len(parent1.route) != len(parent2.route) != route_length:
+            self.notify.error(f"Parent routes are of different lengths.\nParent1 {parent1.route}\nParent2 {parent2.route}")
+            return []
+        self.notify.debug(f"Parent1 {parent1.route}")
+        self.notify.debug(f"Parent2 {parent2.route}")
 
         crossover_type = random.choice(list(CrossoverType))
         child_route = None
         if crossover_type == CrossoverType.ORDERED:
             # random crossover point
-            cutpoint = random.randint(1, len(parent1.route) - 2)
+            cutpoint = random.randint(1, route_length - 2)
             child_route = parent1.route[:cutpoint]
             # add remainder from parent2
             for city in parent2.route:
@@ -297,10 +366,10 @@ class CrowdManager(DirectObject):
                     child_route.append(city)
         elif crossover_type == CrossoverType.PARTIAL_MAP:
             # choose slice from parent1
-            start = random.randint(0, len(parent1.route) - 3)
-            end = random.randint(start + 1, len(parent1.route) - 1)
+            start = random.randint(0, route_length - 3)
+            end = random.randint(start + 1, route_length - 1)
             self.notify.debug(f"Selected slice from {start} to {end} for crossover.")
-            child_route = [None] * (len(parent2.route) - 1)  # create empty route
+            child_route = [None] * (route_length - 1)  # create empty route
             # copy segment from parent1
             for i in range(start, end):
                 child_route[i] = parent1.route[i]
@@ -310,15 +379,37 @@ class CrowdManager(DirectObject):
             used = set(child_route)
             for i in range(len(child_route)):
                 if child_route[i] is None:
-                    while p2_index < len(parent2.route) and parent2.route[p2_index] in used:
+                    while p2_index < route_length and parent2.route[p2_index] in used:
                         p2_index += 1
-                    if p2_index < len(parent2.route):
+                    if p2_index < route_length:
                         child_route[i] = parent2.route[p2_index]
                         used.add(parent2.route[p2_index])
                         p2_index += 1
             self.notify.debug(f"Generated child route: {child_route}")
-
+        child_route.append(child_route[0])  # return to start
         return child_route
+
+    def create_next_generation(self):
+        self.notify.debug("Creating next generation...")
+        current_generation = self.generations[-1]
+        self.notify.debug(f"Current generation: {current_generation}")
+        sorted_gen = sorted(current_generation, key=lambda person: person.distance)
+        parents = sorted_gen[:max(1, self.crowd_size // 2)]  # top 20%
+        next_generation = []
+        while len(next_generation) <= self.crowd_size:
+            child_route = self.generate_child(parents)
+            child_person = self.people_picker.pick_a_person()
+            child_person.route = child_route
+            child_person.calculate_distance()
+            next_generation.append(child_person)
+        # add LKH
+        lkh_person = self.people_picker.pick_a_person()
+        lkh_person.route = []
+        self.generations.append(next_generation)
+        # update text
+        self.ui[9]['text'] = f"Generation: {len(self.generations)}"
+        self.crowd_display.update_display(next_generation)
+        self.notify.debug("Next generation created.")
 
 
 matrix_storage_location = "results/WOC/LKH/"
@@ -339,9 +430,12 @@ def cost_matrix_to_tsp(filename, cost_matrix):
         f.write("EOF\n")
 
 
-def create_parameter_file(filename):
+def create_parameter_file(filename,runs=1):
+    print(f"Runs: {runs}")
     with open(f"{matrix_storage_location}{filename}.par", 'w') as f:
         f.write(f"PROBLEM_FILE = {matrix_storage_location}{filename}.tsp\n")
         f.write(f"OUTPUT_TOUR_FILE = {matrix_storage_location}{filename}.tour\n")
-        f.write("RUNS = 1\n")
+        f.write(f"RUNS = {str(runs)}\n")
+        f.write(f"KICKS = 4\n")
+        f.write(f"SEED = {random.randint(1, 100000)}\n")
     return True

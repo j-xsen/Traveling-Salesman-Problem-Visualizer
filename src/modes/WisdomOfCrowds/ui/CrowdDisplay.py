@@ -4,7 +4,7 @@ from direct.showbase.DirectObject import DirectObject
 
 
 class CrowdDisplay(DirectObject):
-    def __init__(self, crowd, parent):
+    def __init__(self, parent):
         DirectObject.__init__(self)
         self.notify = directNotify.newCategory("CrowdDisplay")
         color = 0.8
@@ -26,7 +26,6 @@ class CrowdDisplay(DirectObject):
                                     pos=(0.44, 0, -.175),
                                     parent=self.node,
                                     command=self.scroll_right)
-        self.update_display(crowd)
 
     def scroll_left(self):
         self.notify.debug("Scrolling left...")

@@ -1,12 +1,10 @@
 import os
 
-from direct.gui.DirectCheckBox import DirectCheckBox
+from direct.gui import DirectGuiGlobals as DGG
 from direct.gui.DirectCheckButton import DirectCheckButton
 from direct.gui.DirectFrame import DirectFrame
 from direct.gui.DirectLabel import DirectLabel
-from direct.showbase.DirectObject import DirectObject
 from panda3d.core import NodePath
-from direct.gui import DirectGuiGlobals as DGG
 
 
 class PeoplePicker(NodePath):
@@ -55,7 +53,7 @@ class PeoplePicker(NodePath):
         import random
         choice = random.choice(self.all_people)
         self.notify.debug(f"Randomly picked person: {choice}")
-        if choice=="Greedy":
+        if choice == "Greedy":
             from src.modes.WisdomOfCrowds.People.Greedy import Greedy
             choice = Greedy()
         return choice
