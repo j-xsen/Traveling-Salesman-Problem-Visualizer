@@ -8,6 +8,7 @@ from direct.gui.DirectButton import DirectButton
 from direct.gui.DirectEntry import DirectEntry
 from direct.gui.DirectFrame import DirectFrame
 from direct.gui.DirectLabel import DirectLabel
+from direct.gui.DirectSlider import DirectSlider
 from direct.showbase.DirectObject import DirectObject
 from panda3d.core import WindowProperties, ButtonHandle
 from scipy.special import betaincinv
@@ -30,7 +31,7 @@ class CrowdManager(DirectObject):
         self.generations = []
         self.generation = 0
         self.crowd_size = crowd_size
-        self.elite_percent = elite_percent
+        self._elite_percent = elite_percent
 
         self._generated_crowd = False
         self._generated_lkh = False
@@ -38,6 +39,15 @@ class CrowdManager(DirectObject):
         self.people_picker = None
         self.crowd_display = None
         self.accept("WOCProblemChanged", self.disable_lkh_buttons)
+
+    @property
+    def elite_percent(self):
+        return self._elite_percent
+    @elite_percent.setter
+    def elite_percent(self, val):
+        if self.crowd_display:
+            self.crowd_display.elite_percent = val
+        self._elite_percent = val
 
     @property
     def generated_crowd(self):
@@ -50,10 +60,16 @@ class CrowdManager(DirectObject):
             # crowd generated, check if ui exists
             if len(self.ui) > 0:
                 self.ui[7]["state"] = DGG.NORMAL
+                self.ui[12]['state'] = DGG.NORMAL
+                self.ui[13]['state'] = DGG.NORMAL
+                self.ui[16]['state'] = DGG.NORMAL
             else:
                 self.notify.warning("UI not built yet, cannot update LKH buttons.")
         else:
             self.ui[7]["state"] = DGG.DISABLED
+            self.ui[12]['state'] = DGG.DISABLED
+            self.ui[13]['state'] = DGG.DISABLED
+            self.ui[16]['state'] = DGG.DISABLED
         self._generated_crowd = val
 
     @property
@@ -116,6 +132,15 @@ class CrowdManager(DirectObject):
             self.notify.warning("Invalid crowd size entered.")
         self.ui[2].enterText(str(self.crowd_size))
 
+    def set_elite_percent(self):
+        if len(self.ui) == 0:
+            self.notify.warning("UI not built yet, cannot set elite percent.")
+            return
+        slider = self.ui[14]
+        label = self.ui[15]
+        self.elite_percent = slider['value']
+        label['text'] = "Elite Percent:\n{:.0f}%".format(self.elite_percent * 100)
+
     def build_ui(self):
         # base
         frame = DirectFrame(frameColor=(0, 0, 0, 1),
@@ -137,6 +162,20 @@ class CrowdManager(DirectObject):
                                  text_fg=(1, 1, 1, 1), frameSize=(0, 2, 0, 1),
                                  frameColor=(1, 1, 1, 0.5), width=2.5,
                                  command=self.adjust_crowd_size)
+        elite_percent_slider = DirectSlider(range=(0.0, 1), value=self.elite_percent,
+                                            scale=0.3, pos=(-.8, 0, .25),
+                                            frameSize=(-0.15, 0.15, -0.65, 0.65),
+                                            pageSize=1,
+                                            command=self.set_elite_percent,
+                                            thumb_frameSize=(-0.1, 0.1, -0.1, 0.1),
+                                            orientation=DGG.VERTICAL,
+                                            parent=crowd_np)
+        elite_percent_label = DirectLabel(text="Elite Percent:\n{:.0f}%".format(self.elite_percent * 100),
+                                          scale=0.05, pos=(-1, 0, .35),
+                                          text_pos=(0, 0),
+                                          text_fg=(1, 1, 1, 1),
+                                          frameColor=(0, 0, 0, 0),
+                                          parent=crowd_np)
 
         make_new_crowd_button = DirectButton(text="Create new Crowd", scale=0.07,
                                              pos=(-.35, 0, .05),
@@ -219,7 +258,7 @@ class CrowdManager(DirectObject):
                                ),
                                  command=self.create_next_generation,
                                  state=DGG.DISABLED,
-                               pos=(-.05, 0, -.1), parent=gen_frame)
+                               pos=(-.135, 0, -.1), parent=gen_frame)
         gen_fifty = DirectButton(text="50", scale=0.07,
                                  frameColor=(
                                      (0.8, 0.8, 0.8, 1),  # Normal
@@ -230,7 +269,18 @@ class CrowdManager(DirectObject):
                                     command=self.multiple_gens,
                                     extraArgs=[50],
                                     state=DGG.DISABLED,
-                                    pos=(.175, 0, -.1), parent=gen_frame)
+                                    pos=(.085, 0, -.1), parent=gen_frame)
+        gen_hundred = DirectButton(text="100", scale=0.07,
+                                 frameColor=(
+                                     (0.8, 0.8, 0.8, 1),  # Normal
+                                     (0.9, 0.9, 0.9, 1),  # Click
+                                     (0.7, 0.7, 0.7, 1),  # Hover
+                                     (0.5, 0.5, 0.5, 1)  # Disabled
+                                 ),
+                                 command=self.multiple_gens,
+                                 extraArgs=[100],
+                                 state=DGG.DISABLED,
+                                 pos=(.22, 0, -.1), parent=gen_frame)
 
         # widgets
         self.people_picker = PeoplePicker(frame)
@@ -251,6 +301,9 @@ class CrowdManager(DirectObject):
         self.ui.append(gen_right)                       # 11
         self.ui.append(gen_new)                         # 12
         self.ui.append(gen_fifty)                       # 13
+        self.ui.append(elite_percent_slider)            # 14
+        self.ui.append(elite_percent_label)             # 15
+        self.ui.append(gen_hundred)                     # 16
 
         self.ui.append(self.crowd_display)              #
         self.ui.append(self.people_picker)              #
@@ -313,6 +366,7 @@ class CrowdManager(DirectObject):
         # enable generate button
         self.ui[12]['state'] = DGG.NORMAL
         self.ui[13]['state'] = DGG.NORMAL
+        self.ui[16]['state'] = DGG.NORMAL
 
     def generate_crowd(self):
         self.notify.debug("Making new crowd...")

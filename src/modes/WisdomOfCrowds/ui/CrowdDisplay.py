@@ -14,7 +14,7 @@ class CrowdDisplay(DirectObject):
         self._page_number = 0
         self.crowd_per_page = 20
         self.crowd = []
-        self.elite_percent = elite_percent
+        self._elite_percent = elite_percent
         self.left_button = None
         self.right_button = None
         self.node = DirectFrame(frameColor=(color, color, color, 1),
@@ -24,6 +24,15 @@ class CrowdDisplay(DirectObject):
 
         # nav buttons
         self.create_nav_buttons(self.node)
+
+    @property
+    def elite_percent(self):
+        return self._elite_percent
+    @elite_percent.setter
+    def elite_percent(self, value):
+        self._elite_percent = value
+        self.refresh_node()
+        self.update_display()
 
     @property
     def page_number(self):
