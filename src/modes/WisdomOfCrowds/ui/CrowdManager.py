@@ -1,5 +1,6 @@
 import random
 import subprocess
+import time
 
 import numpy
 from direct.directnotify.DirectNotifyGlobal import directNotify
@@ -37,6 +38,8 @@ class CrowdManager(DirectObject):
         self._parent_percent = parent_percent
         self.elite_percent = elite_percent
         self.mutation_rate = 0.05
+
+        self.run_time = 0
 
         self.lkh_values = []
         self.lkh = True
@@ -106,18 +109,28 @@ class CrowdManager(DirectObject):
         label = self.ui[20]
         label['text'] = f"Mutation Rate: {self.mutation_rate*100:.3f}%"
 
-    def print_lkh_values(self):
+    def plot_values(self):
         # get lkh values
         distances = [person.distance for person in self.lkh_values]
 
+        # safe guard
+        if len(distances) == 0 and len(self.generations) == 0:
+            self.notify.warning("No data to plot.")
+            return
+
         # general pop values
         best_children = []
+        best_v = float('inf')
+        best_g = -1
         worst_children = []
         mean_distances = []
         std_distances = []
         for gen in range(1,len(self.generations)):
             gen_dist = [person.distance for person in self.generations[gen]]
             best_person = min(self.generations[gen], key=lambda person: person.distance)
+            if best_g == -1 or best_person.distance < best_v:
+                best_v = best_person.distance
+                best_g = gen
             worst_person = max(self.generations[gen], key=lambda person: person.distance)
             best_children.append(best_person.distance)
             worst_children.append(worst_person.distance)
@@ -131,17 +144,20 @@ class CrowdManager(DirectObject):
         if not distances:
             x = list(range(1,len(best_children)+1))
 
-        pyplot.plot(x, best_children, marker='s', linestyle='--', label="Best Child", markersize=3, alpha=0.25)
-        pyplot.plot(x, worst_children, marker='s', linestyle='--', label="Worst Child", color='red', markersize=2, alpha=0.25)
+        pyplot.plot(x, best_children, marker='s', linestyle='--', label="Best Child", markersize=3, alpha=0.25, color="blue")
+        pyplot.plot(x, worst_children, marker='s', linestyle='--', label="Worst Child", color='blue', markersize=2, alpha=0.25)
         if distances:
-            pyplot.plot(x, distances, marker='o', linestyle='-', label="LKH Tour", markersize=3)
-        pyplot.plot(x, mean_distances, marker='^', linestyle='-.', label="Mean Distance", markersize=2)
+            pyplot.plot(x, distances, marker='o', linestyle='-', label="LKH Tour", markersize=3, color="orange")
+        pyplot.plot(x, mean_distances, marker='^', linestyle='-.', label="Mean Distance", markersize=2, color="green")
         pyplot.fill_between(x, mean_distances - std_distances, mean_distances + std_distances, color='gray', alpha=0.2, label='Std Dev')
         pyplot.legend(loc='upper right', framealpha=0.5)
         pyplot.suptitle("Tour Distances Over Generations", fontweight="bold", fontsize=14)
         pyplot.title(f"Crowd: {self.crowd_size} | Cities: {len(base.map.cities)} | Parents: {int(self.parent_percent*100)}% | Mutation: {self.mutation_rate*100:.3f}% | Elitism: {int(self.elite_percent*100)}%",)
         pyplot.xlabel("Generation", fontsize=12)
         pyplot.ylabel("Tour Distance", fontsize=12)
+        pyplot.text(1.1, -.12, f"Run Time: {self.run_time:.4f} seconds", ha='right', va='center', transform=pyplot.gca().transAxes, fontsize=8)
+        pyplot.text(-.15,-.085, f"Best distance: {min(best_children):.2f}", ha='left', va='center', transform=pyplot.gca().transAxes, fontsize=8)
+        pyplot.text(-.15,-.12, f"From generation: {best_g}", ha='left', va='center', transform=pyplot.gca().transAxes, fontsize=8)
         pyplot.show()
 
     def disable_lkh_buttons(self):
@@ -349,10 +365,10 @@ class CrowdManager(DirectObject):
                                                     pos=(-1.95, 0, .2),
                                                     command=self.show_agreement_matrix, parent=frame)
 
-        print_generations = DirectButton(text="Show Distance Progression", scale=0.06,
-                                            pos=(-1.95, 0, .1),
-                                            command=self.print_lkh_values,
-                                         parent=frame)
+        plot_generations = DirectButton(text="Show Distance Progression", scale=0.06,
+                                        pos=(-1.95, 0, .1),
+                                        command=self.plot_values,
+                                        parent=frame)
 
         mutation_rate_slider = DirectSlider(range=(0.0, 0.01), value=0.005,
                                             parent=frame,
@@ -417,7 +433,7 @@ class CrowdManager(DirectObject):
         self.ui.append(parent_percent_label)             # 15
         self.ui.append(gen_hundred)                     # 16
         self.ui.append(display_agreement_button)        # 17
-        self.ui.append(print_generations)               # 18
+        self.ui.append(plot_generations)               # 18
         self.ui.append(mutation_rate_slider)           # 19
         self.ui.append(mutation_rate_label)            # 20
         self.ui.append(disable_lkh)                     # 21
@@ -501,16 +517,26 @@ class CrowdManager(DirectObject):
 
     def generate_crowd(self):
         self.notify.debug("Making new crowd...")
+
+        # clear
         self.disable_lkh_buttons()
         self.generations.clear()
         self.lkh_values.clear()
+
+        # time
+        start = time.perf_counter()
         crowd = []
         for _ in range(self.crowd_size):
             person = self.people_picker.pick_a_person()
             crowd.append(person)
+
+        # crowd
         self.crowd_display.edit_crowd(crowd)
         self.generated_crowd = True
         self.add_generation(crowd)
+        end = time.perf_counter()
+        elapsed = end - start
+        self.run_time += elapsed
         # self.refresh_lkh_tour()
 
     def show_agreement_matrix(self):
@@ -519,6 +545,7 @@ class CrowdManager(DirectObject):
         if ag_beta is None:
             self.notify.warning("Agreement matrix could not be created.")
             return
+        self.notify.debug(f"ag_beta+1 {ag_beta+1}")
         colorizer = pyplot.get_cmap('bwr')
         pyplot.imshow(ag_beta, cmap=colorizer)
         pyplot.suptitle("Agreement Matrix Heatmap", fontweight="bold", fontsize=14)
@@ -558,7 +585,7 @@ class CrowdManager(DirectObject):
         return C_int, C_beta
 
     def generate_child(self, parent_list):
-        self.notify.debug("Generating new child...")
+        # self.notify.debug("Generating new child...")
         parent1, parent2 = random.choices(parent_list, k=2)  # select two
         route_length = len(base.map.cities)
         if not parent1.route or not parent2.route:
@@ -621,8 +648,8 @@ class CrowdManager(DirectObject):
         self.run_lkh("crowd")
 
     def create_next_generation(self):
+        start = time.perf_counter()
         # setup
-        self.notify.debug("Creating next generation...")
         current_generation = self.generations[-1]
         sorted_gen = sorted(current_generation, key=lambda person: person.distance)
         parents = sorted_gen[:max(1, int(self.crowd_size * self.parent_percent))]  # top
@@ -644,7 +671,6 @@ class CrowdManager(DirectObject):
             elite_copy = People()
             elite_copy.load_route(elite.route)
             next_generation.append(elite_copy)
-        self.notify.debug(f"Next generation: {len(next_generation)} elites added.")
         while len(next_generation) < self.crowd_size:
             child_route = self.generate_child(parents)
             child_person = People()
@@ -652,6 +678,10 @@ class CrowdManager(DirectObject):
             child_person.calculate_distance()
             next_generation.append(child_person)
         self.add_generation(next_generation)
+
+        end = time.perf_counter()
+        elapsed = end - start
+        self.run_time += elapsed
 
         # update text
         self.ui[9]['text'] = f"Generation: {len(self.generations)}"

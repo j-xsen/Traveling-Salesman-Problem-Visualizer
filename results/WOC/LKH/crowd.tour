@@ -1,19 +1,19 @@
-NAME : cost_matrix_problem.232919.tour
-COMMENT : Length = 232919
-COMMENT : Found by LKH-3 [Keld Helsgaun] Wed Nov 12 21:34:53 2025
+NAME : cost_matrix_problem.180152.tour
+COMMENT : Length = 180152
+COMMENT : Found by LKH-3 [Keld Helsgaun] Wed Nov 12 23:24:03 2025
 TYPE : TOUR
 DIMENSION : 11
 TOUR_SECTION
 1
-6
-4
-5
-9
-2
-11
-8
-10
 3
 7
+10
+8
+11
+2
+9
+5
+4
+6
 -1
 EOF
