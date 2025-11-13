@@ -145,7 +145,7 @@ class CrowdManager(DirectObject):
             x = list(range(1,len(best_children)+1))
 
         pyplot.plot(x, best_children, marker='s', linestyle='--', label="Best Child", markersize=3, alpha=0.25, color="blue")
-        pyplot.plot(x, worst_children, marker='s', linestyle='--', label="Worst Child", color='blue', markersize=2, alpha=0.25)
+        pyplot.plot(x, worst_children, marker='s', linestyle='--', label="Worst Child", color='red', markersize=2, alpha=0.25)
         if distances:
             pyplot.plot(x, distances, marker='o', linestyle='-', label="LKH Tour", markersize=3, color="orange")
         pyplot.plot(x, mean_distances, marker='^', linestyle='-.', label="Mean Distance", markersize=2, color="green")
@@ -455,6 +455,8 @@ class CrowdManager(DirectObject):
     def multiple_gens(self, num):
         for _ in range(num):
             self.create_next_generation()
+            if (_ + 1) % max(10, int(num / 5)) == 0 or (_ + 1) == num:
+                self.notify.warning(f"Generated: {_+1} / {num}")
 
     def read_lkh_tour(self):
         # check if cached
@@ -497,7 +499,7 @@ class CrowdManager(DirectObject):
 
     def run_lkh(self, name):
         create_parameter_file(name, runs=len(self.generations))
-        subprocess.run(["LKH", f"{matrix_storage_location}{name}.par"], check=True)
+        subprocess.run(["LKH", f"{matrix_storage_location}{name}.par"], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         self.generated_lkh = True
 
     def show_route(self, route):
@@ -534,6 +536,8 @@ class CrowdManager(DirectObject):
         for _ in range(self.crowd_size):
             person = self.people_picker.pick_a_person()
             crowd.append(person)
+            if (_ + 1) % max(10, int(self.crowd_size / 5)) == 0 or (_ + 1) == self.crowd_size:
+                self.notify.warning(f"Created person: {_+1}/{self.crowd_size}")
 
         # crowd
         self.crowd_display.edit_crowd(crowd)

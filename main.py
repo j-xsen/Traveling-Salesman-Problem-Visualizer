@@ -1,9 +1,10 @@
 import sys
 
 from direct.directnotify.DirectNotifyGlobal import directNotify
+from direct.gui.DirectCheckButton import DirectCheckButton
 from direct.gui.DirectRadioButton import DirectRadioButton
 from direct.showbase.ShowBase import ShowBase
-from panda3d.core import loadPrcFile, VirtualFileSystem, Filename
+from panda3d.core import loadPrcFile, VirtualFileSystem, Filename, ConfigVariableString
 
 from src.Map import Map
 from src.modes.BruteForceMode import BruteForceMode
@@ -13,6 +14,12 @@ from src.modes.GeneticAlgorithm.GeneticAlgorithm import GeneticAlgorithm
 from src.modes.WisdomOfCrowds.WisdomOfCrowds import WisdomOfCrowds
 
 loadPrcFile("./config.prc")
+
+
+def toggle_debug(state):
+    cats = directNotify.getCategories()[17:]
+    for c in cats:
+        directNotify.getCategory(c).setDebug(state)
 
 
 class TravelingSalesmanProblem(ShowBase):
@@ -42,6 +49,18 @@ class TravelingSalesmanProblem(ShowBase):
         GAMode = GeneticAlgorithm(self.map)
         WOCMode = WisdomOfCrowds(self)
         self._mode = WOCMode
+
+        # debug check button
+        debug_config_var = ConfigVariableString("default-directnotify-level")
+        self.debug = debug_config_var.getValue() == "debug"
+        debug_node = base.a2dTopCenter.attachNewNode("debug_node")
+        debug_node.setPos(-0.1, 0, -0.05)
+        debug_check_button = DirectCheckButton(text="Debug",
+                                               scale=0.05,
+                                               parent=debug_node,
+                                               indicatorValue=self.debug,
+                                                  command=toggle_debug
+                                               )
 
         # modes radio buttons
         radio_button_node = base.a2dTopRight.attachNewNode("radio_buttons")
