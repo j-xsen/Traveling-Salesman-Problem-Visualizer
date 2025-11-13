@@ -1,5 +1,5 @@
 window-title Traveling Salesman Problem
-default-directnotify-level warning
+default-directnotify-level debug
 notify-level-Map warning
 notify-level-Bus warning
 notify-level-Stop warning

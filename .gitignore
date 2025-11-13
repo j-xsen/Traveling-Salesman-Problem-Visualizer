@@ -7,6 +7,7 @@ __pycache__/**
 *.png
 build/**
 *.log
+results/WOC/LKH/**
 # oversized result files
 results/concorde10.txt
 results/concorde11.txt

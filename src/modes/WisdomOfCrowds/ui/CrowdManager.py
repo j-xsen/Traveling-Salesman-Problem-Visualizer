@@ -186,7 +186,8 @@ class CrowdManager(DirectObject):
 
         self.build_ui()
 
-    def adjust_crowd_size(self, text):
+    def update_crowd_size(self, text):
+        self.notify.debug(f"Updating crowd size... {text}")
         if len(self.ui) == 0:
             self.notify.warning("UI not built yet, cannot adjust crowd size.")
             return
@@ -194,13 +195,11 @@ class CrowdManager(DirectObject):
             size = int(text)
             if size < 1:
                 self.notify.warning("Crowd size must be at least 1.")
-                self.ui[2].enterText(str(self.crowd_size))
             else:
                 self.crowd_size = size
-                return
+            self.ui[2].enterText(str(self.crowd_size))
         except ValueError:
             self.notify.warning("Invalid crowd size entered.")
-        self.ui[2].enterText(str(self.crowd_size))
 
     def set_parent_percent(self):
         if len(self.ui) == 0:
@@ -240,7 +239,11 @@ class CrowdManager(DirectObject):
                                  text_pos=(0.15, 0.2),
                                  text_fg=(1, 1, 1, 1), frameSize=(0, 2, 0, 1),
                                  frameColor=(1, 1, 1, 0.5), width=2.5,
-                                 command=self.adjust_crowd_size)
+                                 command=self.update_crowd_size)
+        crowd_times_ten = DirectButton(text="x10", scale=0.04,
+                                       pos=(-.28, 0, 0.116),
+                                       command=lambda: self.update_crowd_size(str(self.crowd_size * 10)),
+                                       parent=crowd_np)
         parent_percent_slider = DirectSlider(range=(0.0, 1), value=self.parent_percent,
                                              scale=0.3, pos=(-.8, 0, .25),
                                              frameSize=(-0.15, 0.15, -0.65, 0.65),
@@ -439,6 +442,8 @@ class CrowdManager(DirectObject):
         self.ui.append(disable_lkh)                     # 21
         self.ui.append(elitism_rate_slider)             # 22
         self.ui.append(elitism_rate_label)              # 23
+        self.ui.append(crowd_np)                      # 24
+        self.ui.append(crowd_times_ten)                 # 25
 
         self.ui.append(self.crowd_display)              #
         self.ui.append(self.people_picker)              #
