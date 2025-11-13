@@ -3,6 +3,7 @@ import uuid
 from direct.directnotify.DirectNotifyGlobal import directNotify
 from direct.showbase.DirectObject import DirectObject
 
+from src.City import City
 from src.bus.distance import distance
 
 
@@ -24,10 +25,17 @@ class People(DirectObject):
         pass
 
     def load_route(self, rte):
-        self.notify.debug(f"Loading rte: {rte}")
         city_copy = base.map.cities[:]
         self.route = []
+        if type(rte) == People:
+            new_rte = rte.route
+            ph=[]
+            for stop in new_rte:
+                ph.append(stop.name)
+            rte = ph
         for stop in rte:
+            if type(stop) == City:
+                stop=stop.name
             self.route.append(city_copy[stop-1])
         self.calculate_distance()
 

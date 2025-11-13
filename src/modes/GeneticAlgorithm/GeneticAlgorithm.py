@@ -25,8 +25,7 @@ RUN_TIMES = 50
 GEN_TIMES = 100
 
 
-def mutate_child(child_route, mut_type):
-    mutation_rate = 0.05
+def mutate_child(child_route, mut_type, mutation_rate=0.05):
     for i in range(len(child_route)):
         if random.random() < mutation_rate:
             # mutate
