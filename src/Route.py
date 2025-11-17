@@ -8,9 +8,9 @@ class Route(list):
         self.route_text = TextNode("route")
         self.route_text.setText("Route: ")
         self.route_text.setAlign(TextNode.ALeft)
-        self.route_text_path = aspect2d.attachNewNode(self.route_text)
+        self.route_text_path = base.a2dTopLeft.attachNewNode(self.route_text)
         self.route_text_path.setScale(0.07)
-        self.route_text_path.setPos(-1.3, 0, 0.8)
+        self.route_text_path.setPos(.05, 0, -.2)
 
     def update_route_text(self):
         if len(self) == 0:

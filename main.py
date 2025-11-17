@@ -1,17 +1,25 @@
 import sys
 
 from direct.directnotify.DirectNotifyGlobal import directNotify
+from direct.gui.DirectCheckButton import DirectCheckButton
 from direct.gui.DirectRadioButton import DirectRadioButton
 from direct.showbase.ShowBase import ShowBase
-from panda3d.core import loadPrcFile, VirtualFileSystem, Filename
+from panda3d.core import loadPrcFile, VirtualFileSystem, Filename, ConfigVariableString
 
 from src.Map import Map
 from src.modes.BruteForceMode import BruteForceMode
 from src.modes.ClosestEdgeInsertionMode import ClosestEdgeInsertionMode
 from src.modes.FirstSearchMode import FirstSearchMode
 from src.modes.GeneticAlgorithm.GeneticAlgorithm import GeneticAlgorithm
+from src.modes.WisdomOfCrowds.WisdomOfCrowds import WisdomOfCrowds
 
 loadPrcFile("./config.prc")
+
+
+def toggle_debug(state):
+    cats = directNotify.getCategories()[17:]
+    for c in cats:
+        directNotify.getCategory(c).setDebug(state)
 
 
 class TravelingSalesmanProblem(ShowBase):
@@ -32,26 +40,49 @@ class TravelingSalesmanProblem(ShowBase):
         self.disableMouse()
 
         # accept close program
-        self.accept("escape", sys.exit)
+        self.accept("escape", self.userExit)
 
         # modes
         BFMode = BruteForceMode(self.map)
         FSMode = FirstSearchMode(self.map)
         CEMode = ClosestEdgeInsertionMode(self.map)
         GAMode = GeneticAlgorithm(self.map)
-        self._mode = GAMode
+        WOCMode = WisdomOfCrowds(self)
+        self._mode = WOCMode
+
+        # debug check button
+        debug_config_var = ConfigVariableString("default-directnotify-level")
+        self.debug = debug_config_var.getValue() == "debug"
+        debug_node = base.a2dTopCenter.attachNewNode("debug_node")
+        debug_node.setPos(-0.1, 0, -0.05)
+        debug_check_button = DirectCheckButton(text="Debug",
+                                               scale=0.05,
+                                               parent=debug_node,
+                                               indicatorValue=self.debug,
+                                                  command=toggle_debug
+                                               )
 
         # modes radio buttons
+        radio_button_node = base.a2dTopRight.attachNewNode("radio_buttons")
+        radio_button_node.setPos(-.5,0,0)
+        radio_button_node.setScale(0.9)
         buttons = [
-            DirectRadioButton(text="Brute Force", scale=0.07, pos=(1, 0, 0.9), variable=[self.mode], value=[BFMode],
-                              command=self.set_mode, extraArgs=[BFMode]),
-            DirectRadioButton(text="Breadth/Depth First Search", scale=0.07, pos=(0.8, 0, 0.75), variable=[self.mode],
-                              value=[FSMode], command=self.set_mode, extraArgs=[FSMode]),
-            DirectRadioButton(text="Closest Edge Insertion", scale=0.07, pos=(0.9, 0, 0.6), variable=[self.mode],
-                              value=[CEMode], command=self.set_mode, extraArgs=[CEMode]),
-            DirectRadioButton(text="Genetic Algorithm", scale=0.07, pos=(0.9, 0, 0.45),
+            DirectRadioButton(text="Brute Force", scale=0.07, pos=(0, 0, -.1), variable=[self.mode], value=[BFMode],
+                              command=self.set_mode, extraArgs=[BFMode],
+                              parent=radio_button_node),
+            DirectRadioButton(text="Breadth/Depth First Search", scale=0.07, pos=(0, 0, -.2), variable=[self.mode],
+                              value=[FSMode], command=self.set_mode, extraArgs=[FSMode],
+                              parent=radio_button_node),
+            DirectRadioButton(text="Closest Edge Insertion", scale=0.07, pos=(0, 0, -.3), variable=[self.mode],
+                              value=[CEMode], command=self.set_mode, extraArgs=[CEMode],
+                              parent=radio_button_node),
+            DirectRadioButton(text="Genetic Algorithm", scale=0.07, pos=(0, 0, -.4),
                             variable=[self.mode],
-                            value=[GAMode], command=self.set_mode, extraArgs=[GAMode])
+                            value=[GAMode], command=self.set_mode, extraArgs=[GAMode],
+                              parent=radio_button_node),
+            DirectRadioButton(text="Wisdom of Crowds", scale=0.07, pos=(0, 0, -.5), variable=[self.mode],
+                              value=[WOCMode], command=self.set_mode, extraArgs=[WOCMode],
+                              parent=radio_button_node),
         ]
         for button in buttons:
             button.setOthers(buttons)

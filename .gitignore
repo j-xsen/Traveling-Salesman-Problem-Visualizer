@@ -8,6 +8,8 @@ __pycache__/**
 build/**
 *.log
 *.txt
+*.odt
+results/WOC/LKH/**
 # oversized result files
 results/concorde10.txt
 results/concorde11.txt

@@ -18,9 +18,9 @@ class Bus(NodePath):
         distance_text = TextNode("distance")
         distance_text.setText(f"Distance traveled: {self._distance_traveled}")
         distance_text.setAlign(TextNode.ALeft)
-        self.distance_text_path = aspect2d.attachNewNode(distance_text)
+        self.distance_text_path = base.a2dTopLeft.attachNewNode(distance_text)
         self.distance_text_path.setScale(0.07)
-        self.distance_text_path.setPos(-1.3, 0, 0.9)
+        self.distance_text_path.setPos(0.05, 0, -.1)
         self.stop_nodes = NodePath("Stops")
         self.stop_nodes.reparentTo(self)
 

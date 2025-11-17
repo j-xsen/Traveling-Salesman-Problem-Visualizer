@@ -1,3 +1,0 @@
-Route found: 1, 2, 7, 3, 6, 5, 4, 1
-Distance: 63.863031874767636
-Time taken: 0.004476800037082285 seconds

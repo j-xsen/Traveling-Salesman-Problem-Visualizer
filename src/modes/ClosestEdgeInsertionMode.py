@@ -10,10 +10,9 @@ class ClosestEdgeInsertionMode(Mode):
     def __init__(self, _map):
         super().__init__(ProblemType.CLOSEST_EDGE, 'Random30.tsp', _map)
 
-    def activate(self, _map):
-        self.map.bus.making_stops = True
+    def activate(self, _map, steps=True):
         self.map.calc_route_complete = False
-        Mode.activate(self, _map)
+        Mode.activate(self, _map, steps)
 
     def deactivate(self):
         self.map.calc_route_complete = True

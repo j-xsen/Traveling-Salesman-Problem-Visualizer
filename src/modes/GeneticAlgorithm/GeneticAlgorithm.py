@@ -1,7 +1,6 @@
 import random
 import statistics
 import time
-from collections import defaultdict
 from enum import Enum
 
 import numpy as np
@@ -11,7 +10,7 @@ from direct.gui.DirectFrame import DirectFrame
 from direct.gui.DirectLabel import DirectLabel
 from direct.gui.DirectRadioButton import DirectRadioButton
 from matplotlib import pyplot as plt
-from panda3d.core import TexturePool, transpose
+from panda3d.core import TexturePool
 
 from src.modes.Mode import Mode, ProblemType
 from src.modes.GeneticAlgorithm.GARoute import GARoute
@@ -28,8 +27,7 @@ POPULATION_SIZE = 100
 FITTEST_TO_SELECT = 10
 
 
-def mutate_child(child_route, mut_type):
-    mutation_rate = 0.05
+def mutate_child(child_route, mut_type, mutation_rate=0.05):
     for i in range(len(child_route)):
         if random.random() < mutation_rate:
             # mutate
@@ -84,6 +82,9 @@ class GeneticAlgorithm(Mode):
         self.population = []
         self.crossover_type = CrossoverType.PARTIAL_MAP
         self.mutation_type = MutationType.INVERSION
+
+    def activate(self, _map, stops=False):
+        Mode.activate(self, _map, stops)
 
     def build_ui(self):
         # buttons
@@ -358,16 +359,6 @@ class GeneticAlgorithm(Mode):
     def load_texture(self, texture_path="progress.png"):
         txtr = loader.loadTexture(texture_path)
         self.ui[0]['frameTexture'] = txtr
-
-    def activate(self, _map):
-        super().activate(_map)
-        self.map.disable_rendering()
-        self.map.disable_text()
-
-    def deactivate(self):
-        super().deactivate()
-        self.map.enable_rendering()
-        self.map.enable_text()
 
     def generate_population(self, regen=True):
         new_population = []

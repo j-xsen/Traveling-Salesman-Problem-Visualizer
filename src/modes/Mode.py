@@ -13,6 +13,7 @@ class ProblemType(Enum):
     FIRST_SEARCH = "FS"
     CLOSEST_EDGE = "CE"
     GENETIC_ALGORITHM = "GA"
+    WISDOM_OF_CROWDS = "WOC"
 
 
 class Mode(DirectObject):
@@ -60,12 +61,18 @@ class Mode(DirectObject):
         for element in self.ui:
             if type(element) is list:
                 for sub_element in element:
-                    sub_element.destroy()
-            else:
-                element.destroy()
+                    if sub_element:
+                        sub_element.destroy()
+                continue
+            element.destroy()
         self.ui.clear()
 
-    def activate(self, _map):
+    def activate(self, _map, stops=True):
+        self.map.bus.making_stops = stops
+        if stops:
+            self.map.enable_rendering()
+        else:
+            self.map.disable_rendering()
         self.notify.debug(f"Activating modes {self.type}")
         self.accept("mouse1-up", self.on_mouse_click)
         self.load_problem(_map, self.default, "default")
@@ -99,6 +106,8 @@ class Mode(DirectObject):
     def generate_buttons(self, _map):
         self.problem_buttons.clear()
         self.notify.debug(f"Generating buttons for {len(self.files)} files.")
+        buttons_holder = base.a2dBottomLeft.attachNewNode("problem_buttons")
+        buttons_holder.setPos(.3, 0, 0.05)
         for index, file in enumerate(self.files):
             col = index % 3
             row = index // 3
@@ -106,9 +115,11 @@ class Mode(DirectObject):
                 text=file.replace('.tsp', ''),
                 scale=0.07,
                 frameColor=(0.8, 0.8, 0.8, 1),
-                pos=(-1 + col * 0.5, 0, -row * 0.15 - 0.6),
+                # pos=(-1 + col * 0.5, 0, -row * 0.15 - 0.6),
+                pos=(col * 0.5, 0, row * 0.15),
                 variable=[self.last_loaded],
                 value=[file],
+                parent=buttons_holder,
                 extraArgs=[_map, file, f"drb{file}"]
             )
             if file == _map.get_current_loaded_file():
