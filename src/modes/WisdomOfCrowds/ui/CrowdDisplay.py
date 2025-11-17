@@ -25,6 +25,12 @@ class CrowdDisplay(DirectObject):
         # nav buttons
         self.create_nav_buttons(self.node)
 
+    def destroy(self):
+        self.node.remove_node()
+        self.left_button = None
+        self.right_button = None
+        self.crowd.clear()
+
     @property
     def elite_percent(self):
         return self._elite_percent

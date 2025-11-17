@@ -10,6 +10,10 @@ class WisdomOfCrowds(Mode):
         crowd_size = 50
         self.crowd_manager = CrowdManager(crowd_size)
 
+    def destroy(self):
+        self.crowd_manager.destroy()
+        super().destroy()
+
     def load_problem(self, _map, file, src=""):
         hold=False
         if self.last_loaded:

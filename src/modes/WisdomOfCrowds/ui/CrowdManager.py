@@ -1,5 +1,6 @@
 import random
 import subprocess
+import threading
 import time
 
 import numpy
@@ -14,7 +15,7 @@ from direct.gui.DirectLabel import DirectLabel
 from direct.gui.DirectSlider import DirectSlider
 from direct.showbase.DirectObject import DirectObject
 from matplotlib import pyplot
-from panda3d.core import WindowProperties, ButtonHandle
+from panda3d.core import WindowProperties, ButtonHandle, NodePath
 from scipy.special import betaincinv
 
 from src.City import City
@@ -40,6 +41,8 @@ class CrowdManager(DirectObject):
         self.mutation_rate = 0.05
 
         self.run_time = 0
+        self.run_times = []
+        self.best_distances = []
 
         self.lkh_values = []
         self.lkh = True
@@ -172,9 +175,11 @@ class CrowdManager(DirectObject):
         self.notify.debug("Destroying Crowd Manager...")
         self.ignoreAll()
         for item in self.ui:
-            item.destroy()
+            if type(item) == NodePath:
+                item.removeNode()
+            else:
+                item.destroy()
         self.ui.clear()
-        base.userExit()
 
     def open(self):
         self.notify.debug("Opening Crowd Manager...")
@@ -243,6 +248,10 @@ class CrowdManager(DirectObject):
         crowd_times_ten = DirectButton(text="x10", scale=0.04,
                                        pos=(-.28, 0, 0.116),
                                        command=lambda: self.update_crowd_size(str(self.crowd_size * 10)),
+                                       parent=crowd_np)
+        crowd_divide_ten = DirectButton(text="÷10", scale=0.04,
+                                       pos=(-.18, 0, 0.116),
+                                       command=lambda: self.update_crowd_size(str(int(self.crowd_size / 10))),
                                        parent=crowd_np)
         parent_percent_slider = DirectSlider(range=(0.0, 1), value=self.parent_percent,
                                              scale=0.3, pos=(-.8, 0, .25),
@@ -352,6 +361,20 @@ class CrowdManager(DirectObject):
                                     extraArgs=[50],
                                     state=DGG.DISABLED,
                                     pos=(.085, 0, -.1), parent=gen_frame)
+        gen_avg_fifty = DirectButton(text="Runs: 5 | Gens: 5", scale=0.07,
+                                     frameColor=(
+                                         (0.8, 0.8, 0.8, 1),  # Normal
+                                         (0.9, 0.9, 0.9, 1),  # Click
+                                         (0.7, 0.7, 0.7, 1),  # Hover
+                                         (0.5, 0.5, 0.5, 1)  # Disabled
+                                     ),
+                                     command=self.thread_avg_gens,
+                                     extraArgs=[50,50],
+                                     pos=(-.65, 0, -.1), parent=gen_frame)
+        gen_avg_run_count = DirectLabel(text="", scale=0.05,
+                                        frameColor=(0, 0, 0, 0),
+                                        text_fg=(1,1,1,1),
+                                        pos=(-.5, 0, 0), parent=gen_frame)
         gen_hundred = DirectButton(text="100", scale=0.07,
                                  frameColor=(
                                      (0.8, 0.8, 0.8, 1),  # Normal
@@ -444,6 +467,9 @@ class CrowdManager(DirectObject):
         self.ui.append(elitism_rate_label)              # 23
         self.ui.append(crowd_np)                      # 24
         self.ui.append(crowd_times_ten)                 # 25
+        self.ui.append(gen_avg_fifty)                    # 26
+        self.ui.append(crowd_divide_ten)                # 27
+        self.ui.append(gen_avg_run_count)            # 28
 
         self.ui.append(self.crowd_display)              #
         self.ui.append(self.people_picker)              #
@@ -451,6 +477,105 @@ class CrowdManager(DirectObject):
     def toggle_lkh(self, status):
         self.lkh = status
         self.notify.debug(f"Set LKH to {self.lkh}")
+
+    def thread_avg_gens(self, runs, gens):
+        self.run_times = []
+        taskMgr.add(self.avg_multiple_gens_task, "AvgMultipleGensTask", extraArgs=[runs, gens], appendTask=True)
+
+    def avg_multiple_gens_task(self, runs, gens, task):
+        if not hasattr(task, "run_count"):
+            task.run_count = 0
+            task.gen_count = 1
+            task.best_distances = [float('inf')] * runs
+            task.worst_distances = [0] * runs
+            task.std_distances = [0] * runs
+            task.median_distances = [0] * runs
+            self.run_times = [None] * runs
+            self.generate_crowd(warn=False)  # setup first crowd
+
+        # Process one generation at a time
+        if task.gen_count < gens:
+            self.create_next_generation()
+            # get min from gen
+            distances = [person.distance for person in self.generations[-1]]
+            task.best_distances[task.run_count] = min(task.best_distances[task.run_count], min(distances))
+            task.worst_distances[task.run_count] = max(task.worst_distances[task.run_count], max(distances))
+            task.gen_count += 1
+            return task.cont
+        else:
+            distances = [person.distance for person in self.generations[-1]]
+            task.median_distances[task.run_count] = numpy.median(distances)
+            task.std_distances[task.run_count] = numpy.std(distances)
+            self.run_times[task.run_count] = self.run_time
+            task.run_count += 1
+            self.ui[28]['text'] = f"Runs: {task.run_count} / {runs}"
+            if task.run_count < runs:
+                self.generate_crowd(warn=False)  # next run
+                task.gen_count = 1
+            else:
+                print("Best distances per run:", task.best_distances)
+                print("Worst distances per run:", task.worst_distances)
+                print("Std per run:", task.std_distances)
+                self.plot_avg_graph(
+                    best=task.best_distances,
+                    worst=task.worst_distances,
+                    medians=task.median_distances,
+                    std=task.std_distances,
+                    times=self.run_times
+                )
+                return task.done
+            return task.cont
+
+    import matplotlib.pyplot as plt
+    import numpy as np
+
+    def plot_avg_graph(self, best=None, worst=None, medians=None, std=None, times=None):
+        """
+        Plots GA run statistics with median distances and error bars (std dev) per run,
+        along with average run time.
+
+        Parameters:
+        - best: list of best distances per run
+        - worst: list of worst distances per run
+        - medians: list of median distances per run
+        - std: list of std deviation per run
+        - times: list of average run times per run
+        """
+        runs = numpy.arange(1, len(times) + 1)
+
+        fig, ax1 = pyplot.subplots(figsize=(10, 6))
+
+        # Left y-axis: distances
+        color = 'tab:blue'
+        ax1.set_xlabel("Run")
+        ax1.set_ylabel("Distance", color=color)
+
+        # Plot median distances with std as error bars
+        if medians is not None and std is not None:
+            ax1.errorbar(runs, medians, yerr=std, fmt='s', color='tab:green',
+                         ecolor='tab:orange', elinewidth=2, capsize=2, label='Median ± Std')
+
+        # Plot best and worst distances as lines
+        if best is not None:
+            ax1.plot(runs, best, color='tab:blue', marker='o', label='Best Distance')
+        if worst is not None:
+            ax1.plot(runs, worst, color='tab:red', marker='o', label='Worst Distance')
+
+        ax1.tick_params(axis='y', labelcolor=color)
+        ax1.legend(loc='upper left')
+
+        # Right y-axis: run time
+        ax2 = ax1.twinx()
+        color = 'tab:purple'
+        ax2.set_ylabel("Average Run Time (s)", color=color)
+        if times is not None:
+            ax2.plot(runs, times, color=color, marker='x', linestyle='--', label='Run Time')
+        ax2.tick_params(axis='y', labelcolor=color)
+        ax2.legend(loc='upper right')
+
+        pyplot.title("GA Run Statistics: Distance ± Std Dev and Run Time per Run")
+        pyplot.tight_layout()
+        pyplot.show()
 
     def multiple_gens(self, num):
         for _ in range(num):
@@ -522,13 +647,14 @@ class CrowdManager(DirectObject):
         self.ui[13]['state'] = DGG.NORMAL
         self.ui[16]['state'] = DGG.NORMAL
 
-    def generate_crowd(self):
+    def generate_crowd(self, warn=True):
         self.notify.debug("Making new crowd...")
 
         # clear
         self.disable_lkh_buttons()
         self.generations.clear()
         self.lkh_values.clear()
+        self.run_time = 0
 
         # time
         start = time.perf_counter()
@@ -536,8 +662,9 @@ class CrowdManager(DirectObject):
         for _ in range(self.crowd_size):
             person = self.people_picker.pick_a_person()
             crowd.append(person)
-            if (_ + 1) % max(10, int(self.crowd_size / 5)) == 0 or (_ + 1) == self.crowd_size:
-                self.notify.warning(f"Created person: {_+1}/{self.crowd_size}")
+            if warn:
+                if (_ + 1) % max(10, int(self.crowd_size / 5)) == 0 or (_ + 1) == self.crowd_size:
+                    self.notify.warning(f"Created person: {_+1}/{self.crowd_size}")
 
         # crowd
         self.crowd_display.edit_crowd(crowd)
@@ -653,7 +780,6 @@ class CrowdManager(DirectObject):
         agreement_matrix, _ = self.create_agreement_matrix()
         # create files
         cost_matrix_to_tsp("crowd", agreement_matrix)
-        create_par_file = create_parameter_file("crowd", runs=len(self.generations)*5)
         self.run_lkh("crowd")
 
     def create_next_generation(self):

@@ -25,9 +25,20 @@ class PeoplePicker(NodePath):
                             pos=(-.075, 0, 0.05),
                             parent=self.frame)
 
+        # ui
+        self.ui = [self.frame, title]
+
         # create total list of people
         self.all_people = []
         self.gather_all_people()
+
+    def destroy(self):
+        for element in self.ui:
+            if element:
+                print(f"Destroying element: {element}")
+                element.destroy()
+        self.ui.clear()
+        self.all_people.clear()
 
     def gather_all_people(self):
         dir_path = f"src/modes/WisdomOfCrowds/People"
@@ -48,6 +59,7 @@ class PeoplePicker(NodePath):
                                               borderWidth=(.005, .005),
                                               parent=self.frame,
                                               indicatorValue=True)
+            self.ui.append(person_button)
 
     def pick_a_person(self):
         import random
